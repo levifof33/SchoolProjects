@@ -1,0 +1,85 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include "queue.h"
+
+using namespace std;
+
+int main(int argc, char** argv)
+{
+	//Flag for file reading, count number of jobs (integers) from file
+	bool stopReadingFile = false;
+	int jobsFromFileCount = 0;
+
+	//Create a queue, set time to start at 12
+	Queue myqueue(0);
+	myqueue.setBeginningHour(12);
+
+	int num = 0;
+	ifstream inputFile ("input.txt");
+
+	//Open file, read data from it
+	if (inputFile.is_open())
+	{
+		while ((!stopReadingFile) || (myqueue.getLength() > 0) || (jobsFromFileCount != myqueue.completedJobs.size()))
+		{
+			inputFile >> num;
+
+			//Enqueue only numbers greater than 0
+			if((!stopReadingFile) && (num > 0))
+			{
+				jobsFromFileCount++;
+				myqueue.enqueue(num);
+			}
+			
+			if (myqueue.isServiceStationOpen() == 0)
+				myqueue.workOnJob();
+			
+			//Dequeue only if service station can work on job
+			if (myqueue.isServiceStationOpen() == 1)
+				myqueue.dequeue();
+			
+			//if (myqueue.isServiceStationOpen() == 0)
+				//myqueue.workOnJob();
+			
+			//Stop reading file if at end of file
+			if (inputFile.eof())
+				stopReadingFile = true;
+			
+			//Increment system time
+			myqueue.incrementSystemTime();
+		}
+		
+	}
+	else
+		cout << "ERROR: Cannot read from file" << endl;
+	
+	//Close the file, print all completed jobs
+	inputFile.close();
+
+	std::cout << std::endl;
+	myqueue.printAllCompletedJobs();
+
+	//Summary report
+	std::cout << endl;
+	std::cout << "SUMMARY REPORT" << std::endl;
+	std::cout << "Number of Completed Jobs: " << myqueue.completedJobs.size() << std::endl;
+	std::cout << "Total Queue Time: " << myqueue.getTotalQueueTime() << std::endl;
+	
+	if (myqueue.completedJobs.size() == 0)
+		std::cout << "Average Queue Time: 0"<< std::endl;
+	else
+		std::cout << "Average Queue Time: " << (myqueue.getTotalQueueTime()/myqueue.completedJobs.size())<< std::endl;
+		
+	std::cout << "Total Service Time: " << myqueue.getTotalServiceTime() << std::endl;
+	
+	if (myqueue.completedJobs.size() == 0)
+		std::cout << "Average Service Time: 0"<< std::endl;
+	else
+		std::cout << "Average Service Time: " << (myqueue.getTotalServiceTime()/myqueue.completedJobs.size()) << std::endl;	
+	
+	std::cout << endl;
+	system("pause");
+	return 0;
+}
