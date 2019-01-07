@@ -1,0 +1,1125 @@
+
+/* 	
+Group #9 
+	John Juran - jur3106@calu.edu
+	Levi Whited - whi4530@calu.edu
+	J.R. MacDonald - mac6501@calu.edu
+	CET 350 Technical Computing using Java
+	
+	Program 6 - Bouncy Ball with Obstacles Including a cannon Bounce2.java
+*/
+
+
+
+import java.awt.*;
+import java.util.*;
+import java.awt.event.*;
+
+public class CannonVSBall extends Frame implements ItemListener, WindowListener, ComponentListener, ActionListener, AdjustmentListener, MouseListener, MouseMotionListener, Runnable
+{
+private static final long serialVersionUID = 1L;
+	
+Graphics page = null;
+Graphics g = null;
+
+ball mainObj;
+
+boolean flag = true;
+boolean pauseFlag = false;
+boolean clear = false;
+boolean isDragged = false;
+
+int windowWidth;
+int windowHeight;
+double gravy = 9.8;
+int cpuPoints = 0;
+int userPoints = 0;
+
+static int width = 600;
+static int height = 600;
+
+Thread t =null;
+
+Vector<Rectangle> rectVect = new Vector<Rectangle>();
+
+int mx1,my1,mx2,my2,x1,x2,y1,y2,tx,ty;
+
+Scrollbar speedScroll;
+Scrollbar sizeScroll;
+	
+Scrollbar velScroll;
+Scrollbar angleScroll;
+ 
+Label velLabel;
+Label angleLabel;
+Label scoreCPU;
+Label scoreUSR;
+Label cpuScore;
+Label usrScore;
+Label messageLabel;
+
+MenuBar MB;
+Menu C, P, E;
+MenuItem Run, Pause, Restart, Quit;
+MenuItem Size, Speed;
+CheckboxMenuItem xs, s, m, l, xl;
+CheckboxMenuItem xsl, sl, me, fa, xfa;
+CheckboxMenuItem Mercury, Venus, Earth, Moon, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto;
+
+CannonBall cBall;
+
+public CannonVSBall()
+{	
+	this.setSize(WIDTH,HEIGHT);
+
+	int objHeight = 15;		// ball height
+	int objWidth = 15;		// ball width
+	int objSpeed = 1;
+	boolean isOval = true;
+
+	Color color = Color.red;
+	
+	//System.out.println(width);
+	
+//	int width = getWidth();
+	//int height = getHeight();
+	
+	this.setLayout(new BorderLayout());
+	
+	// Constants
+	final int BUTTON_HEIGHT = 35;
+
+	GridBagLayout displ = new GridBagLayout();
+	GridBagConstraints c = new GridBagConstraints();
+	
+	int colWidth[] ={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+	double colWeight[] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+	
+	int rowHeight[] = {1,1,1};
+	double rowWeight[] = {1,1,1};
+	
+	displ.columnWidths=colWidth;
+	displ.columnWeights=colWeight;
+	
+	displ.rowHeights=rowHeight;
+	displ.rowWeights=rowWeight;
+	
+	Panel ctrlPanel = new Panel(displ);
+	
+	MB = new MenuBar();
+	C = new Menu("Control");
+	Run = C.add(new MenuItem("Run",new MenuShortcut(KeyEvent.VK_R)));
+	C.addSeparator();
+	Pause = C.add(new MenuItem("Pause",new MenuShortcut(KeyEvent.VK_P)));
+	C.addSeparator();
+	Restart = C.add(new MenuItem("Restart",new MenuShortcut(KeyEvent.VK_E)));
+	C.addSeparator();
+	Quit = C.add(new MenuItem("Quit",new MenuShortcut(KeyEvent.VK_Q)));
+	
+	
+	P = new Menu("Parameters");
+	Size = P.add(new MenuItem("Size"));
+	P.add(xs = new CheckboxMenuItem("x-small"));
+	P.add(s = new CheckboxMenuItem("small"));
+	P.add(m = new CheckboxMenuItem("medium"));
+	P.add(l = new CheckboxMenuItem("large"));
+	P.add(xl = new CheckboxMenuItem("x-large"));
+	P.addSeparator();
+	Speed = P.add(new MenuItem("Speed"));
+	P.add	(xsl = new CheckboxMenuItem("x-slow"));
+	P.add	(sl = new CheckboxMenuItem("slow"));
+	P.add	(me = new CheckboxMenuItem("medium"));
+	P.add	(fa = new CheckboxMenuItem("fast"));
+	P.add	(xfa = new CheckboxMenuItem("x-fast"));
+	
+	E = new Menu("Environment");
+	E.add(Mercury = new CheckboxMenuItem("Mercury"));
+	E.add(Venus = new CheckboxMenuItem("Venus"));
+	E.add(Earth = new CheckboxMenuItem("Earth"));
+	E.add(Moon = new CheckboxMenuItem("Moon"));
+	E.add(Mars = new CheckboxMenuItem("Mars"));
+	E.add(Jupiter = new CheckboxMenuItem("Jupiter"));
+	E.add(Saturn = new CheckboxMenuItem("Saturn"));
+	E.add(Uranus = new CheckboxMenuItem("Uranus"));
+	E.add(Neptune = new CheckboxMenuItem("Neptune"));
+	E.add(Pluto = new CheckboxMenuItem("Pluto"));
+	
+	MB.add(C);
+	MB.add(P);
+	MB.add(E);
+	this.setMenuBar(MB);
+	
+	Run.addActionListener(this);
+	Pause.addActionListener(this);
+	Restart.addActionListener(this);
+	Quit.addActionListener(this);
+	
+	xs.addItemListener(this);
+	s.addItemListener(this);
+	m.addItemListener(this);
+	l.addItemListener(this);
+	xl.addItemListener(this);
+	
+	xsl.addItemListener(this);
+	sl.addItemListener(this);
+	me.addItemListener(this);
+	fa.addItemListener(this);
+	xfa.addItemListener(this);
+	
+	Mercury.addItemListener(this);
+	Venus.addItemListener(this);
+	Earth.addItemListener(this);
+	Moon.addItemListener(this);
+	Mars.addItemListener(this);
+	Jupiter.addItemListener(this);
+	Saturn.addItemListener(this);
+	Venus.addItemListener(this);
+	Uranus.addItemListener(this);
+	Neptune.addItemListener(this);
+	Pluto.addItemListener(this);		
+
+	//Setup scoring label for CPU 
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=0;
+	c.gridy=1;
+	c.gridwidth= 4;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	scoreCPU = new Label();
+	scoreCPU.setText ("Computer");
+	scoreCPU.setBackground(Color.gray);
+	ctrlPanel.add(scoreCPU);
+	displ.setConstraints(scoreCPU, c);
+
+	//Setup points label for CPU 
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=4;
+	c.gridy=1;
+	c.gridwidth= 3;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	cpuScore = new Label();
+	cpuScore.setText (" Points ");
+	cpuScore.setBackground(Color.gray);
+	ctrlPanel.add(cpuScore);
+	displ.setConstraints(cpuScore, c);
+
+	//Setup scoring label User 
+	c.weightx=1;
+	c.weighty=1;
+	c.gridy=0;
+	c.gridx=0;
+	c.gridwidth= 4;
+	c.gridheight= 1;
+	c.fill=GridBagConstraints.BOTH; 
+	scoreUSR = new Label();
+	scoreUSR.setText ("Player 1");
+	scoreUSR.setBackground(Color.white);
+	ctrlPanel.add(scoreUSR);
+	displ.setConstraints(scoreUSR, c);
+
+	//Setup points label for User 
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=4;
+	c.gridy=0;
+	c.gridwidth= 3;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	usrScore = new Label();
+	usrScore.setText (" Points ");
+	usrScore.setBackground(Color.white);
+	ctrlPanel.add(usrScore);
+	displ.setConstraints(usrScore, c);
+	
+	//Setup label for Velocity Slider
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=9;
+	c.gridy=0;
+	c.gridwidth=3;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	velLabel = new Label();
+	velLabel.setText("Velocity");
+	velLabel.setBackground(Color.red);
+	ctrlPanel.add(velLabel);
+	displ.setConstraints(velLabel, c);
+	
+	//Setup label for Angle Slider
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=9;
+	c.gridy=1;
+	c.gridwidth=3;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	angleLabel = new Label();
+	angleLabel.setText("Angle");
+	angleLabel.setBackground(Color.red);
+	ctrlPanel.add(angleLabel);
+	displ.setConstraints(angleLabel,c);
+	
+	//Setup scrollbar for Velocity Slider
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=12;
+	c.gridy=0;
+	c.gridwidth=4;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	velScroll = new Scrollbar (Scrollbar.HORIZONTAL,50,10,25,150);
+	velScroll.addAdjustmentListener(this);
+	velScroll.setValue(1);
+	ctrlPanel.add(velScroll);
+	displ.setConstraints (velScroll,c);
+
+	//Setup scrollbar for Angle Slider
+	c.weightx=1;
+	c.weighty=1;
+	c.gridx=12;
+	c.gridy=1;
+	c.gridwidth=4;
+	c.gridheight=1;
+	c.fill=GridBagConstraints.BOTH; 
+	angleScroll = new Scrollbar (Scrollbar.HORIZONTAL, 0,1,0,100);
+	angleScroll.addAdjustmentListener(this);
+	angleScroll.setValue(objWidth); 
+	ctrlPanel.add(angleScroll);
+	displ.setConstraints(angleScroll, c);
+
+	//Setup message bar for game status
+	c.gridx=0;
+	c.gridy=2;
+	c.gridheight=1;
+	c.gridwidth=16;
+	messageLabel = new Label();
+	messageLabel.setText("Game Started");
+	messageLabel.setBackground(Color.WHITE);
+	ctrlPanel.add(messageLabel);
+	displ.setConstraints(messageLabel, c);
+	
+	//Defining the look of the game 
+	setBackground(Color.BLACK);
+	page = getGraphics(); // Supposed to make graphics and send it to the ball object
+	mainObj = new ball(page,objHeight,objWidth,objSpeed, isOval, color, width, height -(2*BUTTON_HEIGHT));
+	
+	Panel sheetPanel = new Panel(new BorderLayout());
+	sheetPanel.add(mainObj, BorderLayout.CENTER);
+	
+	sheetPanel.setVisible(true);
+	ctrlPanel.setVisible(true);
+	
+	this.add(sheetPanel, BorderLayout.CENTER);
+	this.add(ctrlPanel, BorderLayout.PAGE_END);
+	
+	mainObj.addMouseListener(this);
+	mainObj.addMouseMotionListener(this);
+	addWindowListener(this);
+	addComponentListener(this);
+
+	start();
+
+}
+
+public static void main(String[] args)
+{
+BorderLayout m = new BorderLayout();
+CannonVSBall app = new CannonVSBall();
+app.setSize(width,height);
+app.setVisible(true);
+//app.setLayout(m);
+m.addLayoutComponent(app, BorderLayout.CENTER);
+}
+
+public void start()
+{
+t = new Thread (this);
+t.start();
+cBall = new CannonBall();
+}
+
+public void restart()
+{
+rectVect.clear();
+mainObj.x=1;
+mainObj.y=1;
+mainObj.yspeed=1;
+mainObj.xspeed=1;
+}
+
+public void actionPerformed(ActionEvent e)
+{
+Object source = e.getSource();
+		{
+	//pauses the moving ball 
+			if (source == Pause)
+			{
+				pauseFlag = true;
+			}
+		//unpauses the moving ball 
+			if (source == Run)
+			{
+				pauseFlag = false;
+			}
+		
+		//shuts down all functionality of the program 
+			if  (source == Quit)
+	    	{
+	      		flag = false;
+	      		mainObj.stop();
+	      		mainObj.quit();
+	      		
+	    	}
+			
+			if (source == Restart)
+			{
+				restart();
+			}
+			
+		}
+}
+public void adjustmentValueChanged(AdjustmentEvent e) 
+{
+	//Operates the size scrollbar test to make sure there is room to resize		
+	if (e.getSource() == sizeScroll)
+	{	
+		boolean sizeFlag = true;
+		boolean bound = false;
+		
+		int size = rectVect.size();
+		int k;
+		Rectangle test = new Rectangle(mainObj.x,mainObj.y,sizeScroll.getValue(),sizeScroll.getValue());
+		for(k=0;k<size;k++)
+		{
+			Rectangle newRect = rectVect.get(k);
+			if (test.intersects(newRect))
+			{
+				sizeFlag = false;
+			}
+		}
+		bound = mainObj.checkBounds(sizeScroll.getValue());
+		if (bound && sizeFlag)
+		{
+		mainObj.width = sizeScroll.getValue();
+		mainObj.height = sizeScroll.getValue();
+		}
+		else
+		{
+			sizeScroll.setValue(mainObj.width);
+		}
+	}
+
+	if(e.getSource() == speedScroll)
+	{	//adjusts speed of the bouncing ball 
+		int speed = speedScroll.getValue();
+		mainObj.xspeed = mainObj.xspeed>0 ? speed : -speed;
+		mainObj.yspeed = mainObj.yspeed >0 ? speed : -speed;
+	}
+	
+}
+
+
+
+public void itemStateChanged(ItemEvent e) 
+{
+	Object source = e.getSource();
+	{
+		
+	if(source == xs)
+	{	s.setState(false);
+		m.setState(false);
+		l.setState(false);
+		xl.setState(false);
+		xs.setState(true);
+		mainObj.width = 10;
+		mainObj.height = 10;
+	}
+	if(source == s)
+	{	xs.setState(false);
+		s.setState(true);
+		m.setState(false);
+		l.setState(false);
+		xl.setState(false);	
+		mainObj.width = 25;
+		mainObj.height = 25;
+	}
+	if(source == m)
+	{	xs.setState(false);
+		s.setState(false);
+		m.setState(true);
+		l.setState(false);
+		xl.setState(false);	
+		mainObj.width = 50;
+		mainObj.height = 50;
+	}
+	if(source == l)
+	{	xs.setState(false);
+		s.setState(false);
+		m.setState(false);
+		l.setState(true);
+		xl.setState(false);	
+		mainObj.width = 100;
+		mainObj.height = 100;
+	}
+	if(source == xl)
+	{	xs.setState(false);
+		s.setState(false);
+		m.setState(false);
+		l.setState(false);
+		xl.setState(true);	
+		mainObj.width = 200;
+		mainObj.height = 200;
+	}
+	if(source == xsl)
+	{	xsl.setState(true);
+		sl.setState(false);
+		me.setState(false);
+		fa.setState(false);
+		xfa.setState(false);	
+		mainObj.xspeed = 1;
+		mainObj.yspeed = 1;
+	}
+	if(source == sl)
+	{	xsl.setState(false);
+		sl.setState(true);
+		me.setState(false);
+		fa.setState(false);
+		xfa.setState(false);	
+		mainObj.xspeed = 3;
+		mainObj.yspeed = 3;
+	}
+	if(source == me)
+	{	xsl.setState(false);
+		sl.setState(false);
+		me.setState(true);
+		fa.setState(false);
+		xfa.setState(false);	
+		mainObj.xspeed = 5;
+		mainObj.yspeed = 5;
+	}
+	if(source == fa)
+	{	xsl.setState(false);
+		sl.setState(false);
+		me.setState(false);
+		fa.setState(true);
+		xfa.setState(false);	
+		mainObj.xspeed = 7;
+		mainObj.yspeed = 7;
+	}
+	if(source == xfa)
+	{	xsl.setState(false);
+		sl.setState(false);
+		me.setState(false);
+		fa.setState(false);
+		xfa.setState(true);	
+		mainObj.xspeed = 10;
+		mainObj.yspeed = 10;
+	}
+	if (source == Mercury)
+	{
+		Mercury.setState(true);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 3.7;
+	}
+	if (source == Venus)
+	{
+		Mercury.setState(false);
+		Venus.setState(true);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 8.87;
+	}
+	if (source == Earth)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(true);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 9.8;
+	}
+	if (source == Moon)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(true);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 1.62;
+	}
+	if (source == Mars)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(true);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 3.71;
+	}
+	if (source == Jupiter)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(true);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 24.92;
+	}
+	if (source == Saturn)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(true);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 10.44;
+	}
+	if (source == Uranus)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(true);
+		Neptune.setState(false);
+		Pluto.setState(false);
+		gravy = 8.87;
+	}
+	if (source == Neptune)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(true);
+		Pluto.setState(false);
+		gravy = 11.15;
+	}
+	if (source == Pluto)
+	{
+		Mercury.setState(false);
+		Venus.setState(false);
+		Earth.setState(false);
+		Moon.setState(false);
+		Mars.setState(false);
+		Jupiter.setState(false);
+		Saturn.setState(false);
+		Uranus.setState(false);
+		Neptune.setState(false);
+		Pluto.setState(true);
+		gravy = 0.58;
+	}
+	}
+}
+public void mouseDragged(MouseEvent e) 
+{	//gets the start and end points of the rectangle
+isDragged = true;
+mx2 = e.getX();
+my2 = e.getY();
+
+x1 = Math.min(mx1,mx2);
+y1 = Math.min(my1,my2);
+x2 = Math.max(mx1,mx2);
+y2 = Math.max(my1, my2);
+e.consume();
+}
+
+public void mouseMoved(MouseEvent e) {}
+
+public void mouseClicked(MouseEvent e) 
+{	//removes the rectangles from the vector
+tx = e.getX();
+ty=e.getY();
+
+if (tx > mainObj.windowWidth-50 && ty > mainObj.windowHeight-50)
+{
+	System.out.println("click");
+	if (!cBall.run)
+	{
+		messageLabel.setText("Ball shot");
+		cBall = new CannonBall();
+		cBall.run=true;
+	}
+	
+}
+
+if (!rectVect.isEmpty() && e.getClickCount() >= 2)
+{
+	checkClick();
+}
+e.consume();
+}
+
+public void checkClick()
+{	//verifies it is clicking on a rectangle 
+int i=0;
+int size = rectVect.size();
+//System.out.println(size);
+for (i=0;i<size;i++)
+{
+	Rectangle thisRect = rectVect.get(i);
+	System.out.print("here");
+	
+	if (tx >= thisRect.x && tx <= thisRect.getWidth()+thisRect.x && ty >= thisRect.y && ty <= thisRect.getHeight()+thisRect.y)
+	{
+		rectVect.remove(thisRect);
+		size--;
+		checkClick();
+
+		
+	}
+}
+
+}
+
+
+public void mouseEntered(MouseEvent arg0) {}
+
+public void mouseExited(MouseEvent arg0) {}
+
+
+public void mousePressed(MouseEvent e) 
+{	//gets the start point of the rectangle for the vector
+mx1 = e.getX();
+my1 = e.getY();
+e.consume();
+}
+
+public void mouseReleased(MouseEvent e) 
+{	//finalizes dimensions of the rectangle 	
+boolean vectFlag=true;
+Rectangle thisRect = new Rectangle(x1,y1,x2-x1,y2-y1);
+if (isDragged)
+{
+	if ((mainObj.x >= x1 && mainObj.x <= x2+x1 && mainObj.y >= y1 && mainObj.y <= y2+y1) || x1 <= 0 || y1 <=0 )
+	{
+		vectFlag=false;
+	}
+	else{
+		int size = rectVect.size();
+		for(int i =0;i<size; i++)
+		{
+			if(rectVect.get(i).contains(thisRect))
+			{
+				vectFlag = false;
+			}
+			if(thisRect.contains(rectVect.get(i)))
+			{
+				rectVect.remove(i);
+				size--;
+			}
+					}
+			
+		}
+		
+		if (vectFlag) rectVect.addElement(thisRect);
+}
+isDragged=false;
+e.consume(); //removes the mouse activity from system memory "Thanks youTube"
+}
+
+
+
+class ball extends Canvas
+{
+private static final long serialVersionUID = 1L;
+
+	int BUTTON_HEIGHT = 35;
+	int height;
+	int width;
+	int speed;
+	boolean isOval;
+	int x = 0;
+	int y = 0;
+	int windowHeight = getHeight() - (2 * BUTTON_HEIGHT);
+	int windowWidth = getWidth();
+	Graphics g;
+	int xspeed=1;
+	int yspeed =1;
+	
+	boolean tails = false;
+	
+	private Image dbImage;
+	private Graphics dbg;
+	
+	Color color;
+	
+
+	ball (Graphics g, int height, int width, int speed, boolean isOval, Color color,int windowWidth, int windowHeight)
+	{
+		this.g = g;
+		this.height= height;
+		this.width = width;
+		this.speed = speed;
+		this.isOval= isOval;
+		this.color= color;
+		this.windowHeight= windowHeight;
+		this.windowWidth= windowWidth;
+		yspeed = speed;
+		xspeed = speed;
+	}
+	
+public void quit()
+	{	//disposes of the graphics 
+	getGraphics().dispose();
+	}
+	public void stop()
+{
+	Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+	System.exit(0);
+}
+	public void move()
+	{	//moves the ball bounces off the walls and the rectangles 
+		if (this.x < 0 || this.x > (windowWidth-width))
+			this.xspeed = -this.xspeed;
+		if (this.y < 0 || this.y > (windowHeight-height))
+			this.yspeed = -this.yspeed;
+		
+		for(int i = 0;i < rectVect.size();i++)
+		{
+			Rectangle rect = rectVect.get(i);
+			if (((this.x+this.width) == rect.x) || (this.x == (rect.x+rect.width)))
+			{
+				if ((((this.x+this.width) > rect.x) && ((this.y+this.width) > rect.y) && ((this.y+width) < (rect.y+rect.height)) || ((this.y > rect.y) && (this.y < (rect.y+rect.height)) && (this.x < rect.x+rect.height+1))))
+				{
+					this.xspeed = -this.xspeed;
+				}
+				
+			}
+			else if(((this.y+this.width) == rect.y) || (this.y == (rect.y+rect.height)))
+			{
+				
+				if ((((this.y+this.width) >= rect.y) && ((this.x+this.width) > rect.x) && ((this.x+this.width) < (rect.x+rect.width)) && ((this.y+this.width) < (rect.y+rect.height))) || ((this.y == (rect.y+rect.height)) && (this.x > rect.x) && (this.x < (rect.x+rect.width))))
+				{
+				
+				this.yspeed= -this.yspeed;
+				}
+				
+			}
+
+		}
+			
+		this.x += this.xspeed;
+		this.y += this.yspeed;
+	}
+	
+	
+	public boolean checkBounds (int size) // checks the bounds to see if a resize is possible
+	{
+
+		if (this.x+size >= windowWidth || this.x+size >= windowHeight || this.y+size >= windowHeight || this.y+size >= windowWidth)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+		
+		
+	}
+	
+	public void update (Graphics g)
+	{	//sets up the double buffer 
+		dbImage = createImage(getWidth(), getHeight());
+		dbg = dbImage.getGraphics();
+		paint(dbg);
+		g.drawImage(dbImage, 0, 0, this);
+	}
+	
+	public void paint(Graphics g)
+	{	//paints to the screen 
+		
+		int bHeight = this.getHeight();
+		int bWidth = this.getWidth();
+		
+		Rectangle obj = new Rectangle (mainObj.x, mainObj.y, mainObj.width, mainObj.height);
+		Rectangle cannon = new Rectangle(this.getWidth()-50,this.getHeight()-50,500,500);
+		
+		g.setColor(mainObj.color);
+		g.fillOval(mainObj.x, mainObj.y, mainObj.width, mainObj.height);
+
+		if (cBall.cannonThread.isAlive())
+		{
+			g.setColor(Color.cyan);
+			g.drawOval(cBall.x, cBall.y, cBall.width, cBall.height);
+			g.fillOval(cBall.x, cBall.y, cBall.width, cBall.height);
+			
+			Rectangle test = new Rectangle(cBall.x, cBall.y, cBall.width, cBall.height);
+			
+			if (test.intersects(obj))
+			{
+				messageLabel.setText("User Scored!");
+				cBall.run=false;
+				restart();
+				userPoints++;
+				usrScore.setText(" Points "+userPoints);
+			} else if(test.intersects(cannon))
+			{
+				cBall.run=false;
+				restart();
+				messageLabel.setText("User Scored!");
+				usrScore.setText(" Points "+(++userPoints));
+			}
+		
+		}
+		
+		if (obj.intersects(cannon))
+		{
+			restart();
+			cBall.run=false;
+			messageLabel.setText("Computer Scored!");
+			cpuPoints++;
+			cpuScore.setText(" Points "+cpuPoints);
+		}
+		
+		if (cBall.x < 0 || cBall.y > mainObj.windowHeight) // kills thread and ball needs changed in future
+		{
+			messageLabel.setText("The cannon ball will not return.");
+			cBall.run = false;
+		}
+		
+		if(rectVect.size() >=1)
+		{
+			int f = 0;
+			Iterator<Rectangle> i = rectVect.iterator();
+				while(i.hasNext())
+				{
+					Rectangle test = new Rectangle(cBall.x, cBall.y, cBall.width, cBall.height);
+					
+					Rectangle paintRect = i.next();
+					if(test.intersects(paintRect))
+					{
+						rectVect.remove(f);
+					}
+					else
+					{
+						g.setColor(Color.blue);
+						g.fillRect(paintRect.x,paintRect.y,paintRect.width,paintRect.height);
+					}
+					f++;
+				}
+		}
+		
+		mainObj.windowWidth=this.getWidth();
+		mainObj.windowHeight = this.getHeight();
+		
+		
+		g.setColor(Color.PINK);
+		g.fillOval( bWidth-50, bHeight-50,50,50);
+		
+		//Polygon cannon = calcCannon(bWidth,bHeight);
+		
+		g.setColor(Color.GREEN);
+		g.drawRect(1,1,bWidth-2,bHeight-2);
+	
+	}
+
+}
+
+class CannonBall implements Runnable
+{
+public Thread cannonThread = new Thread(this);
+int x = mainObj.windowWidth-50;
+int y = mainObj.windowHeight-100;
+int width = 50;
+int height = 50;
+float xvel = (float) (velScroll.getValue()*(Math.cos(angleScroll.getValue()/63.6619)));
+float yvel = (float) (-velScroll.getValue()*Math.sin(angleScroll.getValue()/63.6619));
+float grav = (float) gravy;
+boolean run = false;
+
+
+CannonBall()
+{
+	cannonThread.start();
+}
+
+public void run() 
+{
+	while(run)
+	{
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		this.x-=xvel;
+		yvel=(float) (yvel+(.5*grav));
+		this.y+=(int) yvel;
+		
+	}
+
+}
+
+}
+
+public Polygon calcCannon(int windowWidth, int windowHeight)
+{
+Polygon cannon = null;
+int cLength = 50;
+
+
+return cannon;
+}
+
+public void run() 
+{ 		//get the thread going
+Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+try 	{
+	while (flag) //flag to run the thread
+	{	
+		mainObj.repaint();
+		if (!pauseFlag)
+		{
+			mainObj.move();
+			try 
+			{	//sleep for the thread changes speed and refresh rate
+				Thread.sleep(22);
+			} 
+			catch (InterruptedException e) 
+			{
+				e.printStackTrace();
+			}
+
+		}
+	
+	}
+
+}
+			finally {}
+}
+
+public void resize()
+{
+mainObj.windowWidth=getWidth();
+mainObj.windowHeight = getHeight();
+}
+
+public void stop()
+{
+t = null;
+System.exit(0);
+}
+
+
+public void componentHidden(ComponentEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void componentMoved(ComponentEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void componentResized(ComponentEvent arg0) {
+width = getWidth();
+height = getHeight();
+resize();
+
+}
+
+@Override
+public void componentShown(ComponentEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowActivated(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowClosed(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowClosing(WindowEvent arg0) {
+stop();
+dispose();
+System.exit(0);
+
+}
+
+@Override
+public void windowDeactivated(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowDeiconified(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowIconified(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+@Override
+public void windowOpened(WindowEvent arg0) {
+// TODO Auto-generated method stub
+
+}
+
+}
