@@ -5,20 +5,20 @@
     Engineer: Roberto Roux
     v0.95
     
-    15 Feb 2016 (v0.10) ::: Created repository and started basic code setup for the program.
+    (v0.10) ::: Created repository and started basic code setup for the program.
     
-    25 Feb 2016 (v0.20) ::: Added con and decon for Entity, will add Vehicle's soon. 
+    (v0.20) ::: Added con and decon for Entity, will add Vehicle's soon. 
                             Started real work on receive() to detect any weight.
                     
-    17 Mar 2016 (v0.50) ::: Added functionality to both receive() and process(). Program ready to be tested for first time. Added all necessary functions (I believe), should be all about tweaking and bug fixing now
+    (v0.50) ::: Added functionality to both receive() and process(). Program ready to be tested for first time. Added all necessary functions (I believe), should be all about tweaking and bug fixing now
     
-    23 Mar 2016 (v0.60) ::: signal functions now work with LEDs. 
+    (v0.60) ::: signal functions now work with LEDs. 
                 (v0.61) ::: Repositioned where the process() function is called to provide better speed to the overall program.
                             Added constants for the LEDS
                             Added function displayQueue which will display the contents of the queue for testing purposes.
                             Added a call to displayQueue at the beginning of receive() to display each run.   
                               
-    24 Mar 2016 (v0.62) ::: Placed process() back where it was originally (inside the loop() function)
+    (v0.62) ::: Placed process() back where it was originally (inside the loop() function)
                             Repositioned detwt[] and t[] as global variables for better access by process
                             Added blinkGO() to signal when a car is running out of time to proceed
                             Changed both sigGO and sigERROR to accept two parameters instead of one (Red LED pin, Green LED pin)
@@ -27,26 +27,26 @@
                                 has proceeded
                              Added a switch-case to process() which determines which LED constants to send to sigGO()
                               
-    25 Mar 2016 (v0.63) ::: Cleaned up constants section (removed unnecessary constants/altered existing ones to better fit the project).
+    (v0.63) ::: Cleaned up constants section (removed unnecessary constants/altered existing ones to better fit the project).
                             Cleaned up the decision statements in receive() function. Specifically, the print statements for our tests.
                             Moved t[] out of the global scope - it has no need to be there for now as only receive() directly accesses it.
                             Completely edited getIndexOfQueue() function due to an error with its for loop. Replaced for with a do-while.
                             
-    29 Mar 2016 (v0.64) ::: Added unsigned long global variable recentTime to be used for error checking the millis() overflow.
+    (v0.64) ::: Added unsigned long global variable recentTime to be used for error checking the millis() overflow.
                             Added function int checkTime(int) to perform the overflow check.
                             Added commented sections to each signal function for testing the difference between digitalWrite() and analogWrite().
                             Added more print statements for testing purposes.
                             Added braces for first else in flagIt() to encompass multiple statements.
                             
-    31 Mar 2016 (v0.70) ::: Edited the pushElements() function to hopefully fix issues we were having with swap 
+    (v0.70) ::: Edited the pushElements() function to hopefully fix issues we were having with swap 
     
-     1 Apr 2016 (v0.71) ::: Fixed an issue where pushElements() was not functioning correctly
+    (v0.71) ::: Fixed an issue where pushElements() was not functioning correctly
                             Fixed an issue where GRN1 LED would blink for every stop sign instead of just its own.
                             Removed/fixed overly specific function calls
                             Added functionality for every LED. 
                             Added 1 second delay at the end of each receive decision statement to better facilitate multiple cars. 
                             
-     4 Apr 2016 (v0.80) ::: Added a single Serial.println() statement in setup(). This will clean up the output for better testing and date management.
+    (v0.80) ::: Added a single Serial.println() statement in setup(). This will clean up the output for better testing and date management.
                             Deleted print statement at beginning of receive() function to clean up the output.
                             Deleted delays at the end of each receive decision to speed the process up.
                             Deleted unnecessary while loop in process() function.
@@ -59,16 +59,16 @@
                 (v0.81) ::: Added data output functionality.
                             Added a call to checkForEmptyQueue() function to determine whether the rest of process() should even run.
                             
-     5 Apr 2016 (v0.82) ::: Added functionality for process() to detect multiple occurrences of a vehicle not moving.
+   (v0.82) ::: Added functionality for process() to detect multiple occurrences of a vehicle not moving.
                             Fixed an issue where after a light blinked, no LEDs would shine for the corresponding stop.
                             Replaced another if statement chain in process() with a switch case
                             Added blinkKILL() function; will activate when an obstruction is possibly detected.
                             Added both the kill state (an infinite loop with blinking red lights) and a way to disable the kill state once problem is fixed.
                             Miscellaneous clean-up/removals 
-     6 Apr 2016 (v0.90) ::: Rearranged functions so that they are all preceeding the process() function.
+   (v0.90) ::: Rearranged functions so that they are all preceeding the process() function.
                             Miscellaneous clean-up/removals in preparation for full release
                             
-    11 Apr 2016 (v0.95) ::: Miscellaneous clean-up/removals
+   (v0.95) ::: Miscellaneous clean-up/removals
                             */
 #include <stdio.h>
 
