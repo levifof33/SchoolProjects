@@ -1,0 +1,616 @@
+/*
+    Traffic Management System
+    Master Program
+    Programmers: Joshua Shields, Levi Whited
+    Engineer: Roberto Roux
+    v0.95
+    
+    15 Feb 2016 (v0.10) ::: Created repository and started basic code setup for the program.
+    
+    25 Feb 2016 (v0.20) ::: Added con and decon for Entity, will add Vehicle's soon. 
+                            Started real work on receive() to detect any weight.
+                    
+    17 Mar 2016 (v0.50) ::: Added functionality to both receive() and process(). Program ready to be tested for first time. Added all necessary functions (I believe), should be all about tweaking and bug fixing now
+    
+    23 Mar 2016 (v0.60) ::: signal functions now work with LEDs. 
+                (v0.61) ::: Repositioned where the process() function is called to provide better speed to the overall program.
+                            Added constants for the LEDS
+                            Added function displayQueue which will display the contents of the queue for testing purposes.
+                            Added a call to displayQueue at the beginning of receive() to display each run.   
+                              
+    24 Mar 2016 (v0.62) ::: Placed process() back where it was originally (inside the loop() function)
+                            Repositioned detwt[] and t[] as global variables for better access by process
+                            Added blinkGO() to signal when a car is running out of time to proceed
+                            Changed both sigGO and sigERROR to accept two parameters instead of one (Red LED pin, Green LED pin)
+                            Added four lines in setup() that will default each stop to shine red
+                            Completed checkIfGone() to detect the smae weight +- 0.1 lbs at the same sensor to determine if the car
+                                has proceeded
+                             Added a switch-case to process() which determines which LED constants to send to sigGO()
+                              
+    25 Mar 2016 (v0.63) ::: Cleaned up constants section (removed unnecessary constants/altered existing ones to better fit the project).
+                            Cleaned up the decision statements in receive() function. Specifically, the print statements for our tests.
+                            Moved t[] out of the global scope - it has no need to be there for now as only receive() directly accesses it.
+                            Completely edited getIndexOfQueue() function due to an error with its for loop. Replaced for with a do-while.
+                            
+    29 Mar 2016 (v0.64) ::: Added unsigned long global variable recentTime to be used for error checking the millis() overflow.
+                            Added function int checkTime(int) to perform the overflow check.
+                            Added commented sections to each signal function for testing the difference between digitalWrite() and analogWrite().
+                            Added more print statements for testing purposes.
+                            Added braces for first else in flagIt() to encompass multiple statements.
+                            
+    31 Mar 2016 (v0.70) ::: Edited the pushElements() function to hopefully fix issues we were having with swap 
+    
+     1 Apr 2016 (v0.71) ::: Fixed an issue where pushElements() was not functioning correctly
+                            Fixed an issue where GRN1 LED would blink for every stop sign instead of just its own.
+                            Removed/fixed overly specific function calls
+                            Added functionality for every LED. 
+                            Added 1 second delay at the end of each receive decision statement to better facilitate multiple cars. 
+                            
+     4 Apr 2016 (v0.80) ::: Added a single Serial.println() statement in setup(). This will clean up the output for better testing and date management.
+                            Deleted print statement at beginning of receive() function to clean up the output.
+                            Deleted delays at the end of each receive decision to speed the process up.
+                            Deleted unnecessary while loop in process() function.
+                            Deleted unnecessary do while loop in process() function.
+                            Replaced basic if statement chain with a switch case in the process() function.
+                            Removed receive() call from loop(), instead putting two inside of process() for better functionality.
+                            Added a switch case to checkIfGone() to account for every stop instead of just the one.
+                            Miscellaneous clean-up/removals     
+                            
+                (v0.81) ::: Added data output functionality.
+                            Added a call to checkForEmptyQueue() function to determine whether the rest of process() should even run.
+                            
+     5 Apr 2016 (v0.82) ::: Added functionality for process() to detect multiple occurrences of a vehicle not moving.
+                            Fixed an issue where after a light blinked, no LEDs would shine for the corresponding stop.
+                            Replaced another if statement chain in process() with a switch case
+                            Added blinkKILL() function; will activate when an obstruction is possibly detected.
+                            Added both the kill state (an infinite loop with blinking red lights) and a way to disable the kill state once problem is fixed.
+                            Miscellaneous clean-up/removals 
+     6 Apr 2016 (v0.90) ::: Rearranged functions so that they are all preceeding the process() function.
+                            Miscellaneous clean-up/removals in preparation for full release
+                            
+    11 Apr 2016 (v0.95) ::: Miscellaneous clean-up/removals
+                            */
+#include <stdio.h>
+
+#include "HX711.h"      /* libraries for amplifier chip - ABSOLUTELY NECESSARY */
+
+// pin number constants for sensors
+#define D1 50
+#define C1 51
+
+#define D2 48
+#define C2 49
+
+#define D3 46
+#define C3 47
+
+#define D4 44
+#define C4 45
+
+// pin numbers for the green LEDs
+#define GRN1 2
+#define GRN2 4
+#define GRN3 6
+#define GRN4 8
+
+// pin numbers for the red LEDs
+#define RED1 3
+#define RED2 5
+#define RED3 7
+#define RED4 9
+
+#define QUEUESIZE 4
+#define TOOLGT 2.0     // constant for value we deem "too light" to be detected
+#define TIMEGIVENMS 2000  // 2000ms = 2seconds; The delay for the amount of time a car has to leave their stop.
+
+HX711 fsensor1(D1, C1); // fsensor1 refers to Stop Sign 1
+HX711 fsensor2(D2, C2); // fsensor2 refers to Stop Sign 2
+HX711 fsensor3(D3, C3); // refers to stop sign 3
+HX711 fsensor4(D4, C4); // refers to stop sign 
+
+float c_factor = 20000.0;   // used Calibration test to determine this.
+
+int queue[QUEUESIZE] = {0}; // initialize queue to all zeroes.
+float detwt[4] = {0};   // holds detected weight for each stop
+int watch[4] = {0};     // keeps track of multiple failures to move
+bool s1 = false, s2 = false, s3 = false, s4 = false;    // bools to prevent redundancy in the queue.
+bool kill = false;  // variable to determine whether or not to kill the main program, and instead blink red lights
+
+void setup()  // setup() runs once at the start
+{    
+    Serial.begin(9600); // Serial is used to output results to the Serial Monitor
+    
+    fsensor1.set_scale(c_factor);
+    fsensor2.set_scale(c_factor);
+    fsensor3.set_scale(c_factor);
+    fsensor4.set_scale(c_factor);
+    
+    fsensor1.tare();
+    fsensor2.tare();
+    fsensor3.tare();
+    fsensor4.tare();
+    
+    // default each stop to shine red
+    sigERROR(RED1, GRN1);
+    sigERROR(RED2, GRN2);
+    sigERROR(RED3, GRN3);
+    sigERROR(RED4, GRN4);
+    
+    Serial.println("System activated.");
+}
+
+bool addToQueue(int index, int flag)   // adds corresponding stop sign to queue
+{
+    bool atq;
+    
+    queue[index] = flag;    // set available queue position to flag value (1 thru 4)
+    atq = true;
+
+    return atq;
+}
+
+void displayQueue()
+{
+    Serial.print("Queue: ");
+    for(int i = 0; i < QUEUESIZE; i++)
+        Serial.println(queue[i]);
+}
+
+void sigERROR(int r, int g) // pass in whichever constants (RED, GRN) are correct
+{
+    // shines red LED to signal that no car is detected
+    analogWrite(g, 0);
+    analogWrite(r, 255);
+}
+
+void sigGO(int r, int g)  // pass in whichever constants (RED, GRN) are correct
+{
+    // shines green LED to signal to the car that they can proceed
+    analogWrite(r, 0);
+    analogWrite(g, 255);
+    Serial.println("Go signal shining");
+    Serial.println();
+}
+
+void blinkGO(int g, int r)  // blink the light for a second to signal them to go/they are running out of time
+{
+    for(int i = 0; i < 10; i++)
+    {
+        analogWrite(g, 255);
+        delay(50);
+        analogWrite(g, 0);
+        delay(50);
+    }
+    analogWrite(r, 255);
+}
+
+void resetKILL()    // will deactivate the kill state and reset watch to 0
+{
+    if(watch[0] == 3)
+        watch[0] = 0;
+    else if(watch[1] == 3)
+        watch[1] = 0;
+    else if(watch[2] == 3)
+        watch[2] = 0;
+    else
+        watch[3] = 0;
+        
+    kill = false;
+}
+
+void blinkKILL()    // doesn't need to be passed anything because it will access every LED at once
+{
+    char input;
+
+    kill = true;
+    
+    // make sure all greens are turned off
+    analogWrite(GRN1, 0);
+    analogWrite(GRN2, 0);
+    analogWrite(GRN3, 0);
+    analogWrite(GRN4, 0);
+    
+    delay(50);
+    
+    while(kill) // infinite loop since this function is only called if kill is true.
+    {
+        analogWrite(RED1, 255);
+        analogWrite(RED2, 255);
+        analogWrite(RED3, 255);
+        analogWrite(RED4, 255);
+        delay(100);
+        analogWrite(RED1, 0);
+        analogWrite(RED2, 0);
+        analogWrite(RED3, 0);
+        analogWrite(RED4, 0);
+        delay(100);
+        
+    }
+}
+
+void receive()
+{
+    // receive Entities, check weight, determine Vehicles, add to queue.
+    int fcheck, tcheck;
+    unsigned long t[4] = {0};   // holds time for each stop
+    
+    if((detwt[0] = (fsensor1.get_units())) > TOOLGT)    // IF DETected WeighT is greater than our constant for something deemed TOO LiGHt:
+    {
+        // Grab the time
+        t[0] = millis();
+        
+        // Output the time for test purposes
+        Serial.println("Entity detected at stop 1");
+        Serial.println("Time: ");
+        Serial.print(t[0]);
+        Serial.print(" ms");
+        
+        // Weight is already stored in detwt, so just output it for test purposes
+        Serial.println();
+        Serial.println("Weight: ");
+        Serial.print(detwt[0]);
+        Serial.print(" lbs");
+        
+        // the 0th index of the arrays will always correspond to Stop Sign #1, so send a 1 to flag function
+        fcheck = flagIt(1); // call flagIt as well as check for errors
+        if(fcheck == -1)
+            Serial.println("Flag ERROR");
+    }
+    else
+        sigERROR(RED1, GRN1);    // call error signal function for corresponding stop
+    
+    if((detwt[1] = (fsensor2.get_units())) > TOOLGT)    // IF DETected WeighT is greater than our constant for something deemed TOO LiGHt:
+    {
+        // Grab the time
+        t[1] = millis();
+        
+        // Output the time for test purposes
+        Serial.println("Entity detected at stop 2");
+        Serial.println("Time: ");
+        Serial.print(t[1]);
+        Serial.print(" ms");
+        
+        // Weight is already stored in detwt, so just output it for test purposes
+        Serial.println();
+        Serial.println("Weight: ");
+        Serial.print(detwt[1]);
+        Serial.print(" lbs");
+        
+        // the 1st index of the arrays will always correspond to Stop Sign #2, so send a 2 to flag function
+        fcheck = flagIt(2); // call flagIt as well as check for errors
+        if(fcheck == -1)
+            Serial.println("Flag ERROR");
+    }
+    else
+        sigERROR(RED2, GRN2);    // call error signal function for corresponding stop
+        
+    if((detwt[2] = (fsensor3.get_units())) > TOOLGT)    // IF DETected WeighT is greater than our constant for something deemed TOO LiGHt:
+    {
+        // Grab the time
+        t[2] = millis();
+        
+        // Output the time for test purposes
+        Serial.println("Entity detected at stop 3");
+        Serial.println("Time: ");
+        Serial.print(t[2]);
+        Serial.print(" ms");
+        
+        // Weight is already stored in detwt, so just output it for test purposes
+        Serial.println();
+        Serial.println("Weight: ");
+        Serial.print(detwt[2]);
+        Serial.print(" lbs");
+        
+        // the 2nd index of the arrays will always correspond to Stop Sign #3, so send a 3 to flag function
+        fcheck = flagIt(3); // call flagIt as well as check for errors
+        if(fcheck == -1)
+            Serial.println("Flag ERROR"); 
+    }
+    else
+        sigERROR(RED3, GRN3);    // call error signal function for corresponding stop
+    
+    if((detwt[3] = (fsensor4.get_units())) > TOOLGT)    // IF DETected WeighT is greater than our constant for something deemed TOO LiGHt:
+    {
+        // Grab the time
+        t[3] = millis();
+        
+        // Output the time for test purposes
+        Serial.println("Entity detected at stop 4");
+        Serial.println("Time: ");
+        Serial.print(t[3]);
+        Serial.print(" ms");
+        
+        // Weight is already stored in detwt, so just output it for test purposes
+        Serial.println();
+        Serial.println("Weight: ");
+        Serial.print(detwt[3]);
+        Serial.print(" lbs");
+        
+        // the 4th index of the arrays will always correspond to Stop Sign #4, so send a 4 to flag function
+        fcheck = flagIt(4); // call flagIt as well as check for errors
+        if(fcheck == -1)
+            Serial.println("Flag ERROR");
+    }
+    else
+        sigERROR(RED4, GRN4);    // call error signal function for corresponding stop
+}
+
+int flagIt(int toflag)
+{
+    int index = 0, ret = 0;
+    
+    /* Before we can do anything, we need to know what index the queue is already at. Odds are it is not always empty 
+    when this function is called. */
+    index = getIndexOfQueue(); 
+    if(index == -1)
+        Serial.println("Queue is full");
+    else
+    {
+        Serial.println("Index is ");
+        Serial.print(index);
+        Serial.println();
+    }
+       
+    switch(toflag)  // add flagged value to the queue to be processed. This should provide a cleaner solution to our queueing process
+    {
+        case 1:
+          if(!s1)
+          {
+            s1 = addToQueue(index, 1);
+            Serial.println("1 added to queue.");
+            Serial.println();
+          }
+            break;
+        case 2:
+          if(!s2)
+          {
+            s2 = addToQueue(index, 2);
+            Serial.println("2 added to queue.");
+            Serial.println();
+          }
+            break;
+        case 3:
+          if(!s3)
+          {
+            s3 = addToQueue(index, 3);
+            Serial.println("3 added to queue.");
+            Serial.println();
+          }
+            break;
+        case 4:
+          if(!s4)
+          {
+            s4 = addToQueue(index, 4);
+            Serial.println("4 added to queue.");
+            Serial.println();
+          }
+            break;
+        default:
+            ret = -1;
+            break;
+    }
+    displayQueue(); // display the contents of the queue for test purpose
+    return ret;
+}
+
+int getIndexOfQueue()
+{
+    int i, ret;
+    
+    ret = -1;
+    i = 0;
+    
+    do
+    {
+        if(queue[i] == 0)
+            ret = i;
+        else
+            i++;
+    } while(ret == -1 && i < QUEUESIZE);
+            
+    return ret;
+}
+
+int getFirstElement()
+{
+    int flag;
+    
+    flag = queue[0];
+    
+    return flag;
+}
+
+int checkForEmptyQueue()
+{
+    // loops through the array and returns the sum of the elements. If this is zero, it is empty
+    int sum = 0;
+    
+    for(int i = 0; i < QUEUESIZE; i++)
+        sum += queue[i];
+        
+    return sum;
+}
+
+int checkIfGone(int flag, int weight)
+{
+    // checks if the vehicle has proceeded and returns -1 if it has not.
+    int ret = 0;
+      
+    switch(flag)
+    {
+        case 1:
+            if(fsensor1.get_units() > TOOLGT)
+                ret = -1;   
+            break;
+        case 2:
+            if(fsensor2.get_units() > TOOLGT)
+                ret = -1;
+            break;
+        case 3:
+            if(fsensor3.get_units() > TOOLGT)
+                ret = -1;
+            break;
+        case 4:
+            if(fsensor4.get_units() > TOOLGT)
+                ret = -1;
+            break;
+    }
+    
+    return ret;
+}
+
+void removeFromQueue(int flag)
+{
+    // flag value SHOULD be at beginning of array, but just to be sure:
+    for(int i = 0; i < QUEUESIZE; i++)
+        if(queue[i] == flag)
+            queue[i] = 0;
+}
+
+void pushElements()
+{
+    // go through the queue and move everything up to replace the now removed flag number.
+    bool push = true;
+    int i = 0;
+
+    while(push)
+    {
+      if(i < 3)
+      {
+        if(queue[i] == 0 && queue[i+1] != 0)
+          swap(&queue[i], &queue[i+1]);
+      }
+      else if(i < 2)
+      {
+        if(queue[i+1] == 0 && queue[i+2] != 0)
+          swap(&queue[i+1], &queue[i+2]);
+      }
+      else if(i < 1)
+      {
+        if(queue[i+2] == 0 && queue[i+3] != 0)
+          swap(&queue[i+2], &queue[i+3]);
+      }
+      else
+        push = false;
+      i++;
+      displayQueue();
+    }
+}
+
+void swap(int *a, int *b)
+{
+    // swaps elements of an array
+    int t = 0;
+    t = *a;
+    *a = *b;
+    *b = t;
+}
+
+void process()
+{
+    int next, gone, jumpOut = 0, wt = 0, empty = 0;
+    
+    receive();  // call receive at beginning of function.
+        
+    empty = checkForEmptyQueue();
+        
+    if(empty != 0)
+    {
+        next = getFirstElement();
+        Serial.println("Next element in queue is: ");
+        Serial.println(next);
+        Serial.println();
+                
+        if(next != 0)
+        {
+            switch(next)
+            {
+                case 1:
+                    sigGO(RED1, GRN1);
+                    break;
+                case 2:
+                    sigGO(RED2, GRN2);
+                    break;
+                case 3:
+                    sigGO(RED3, GRN3);
+                    break;
+                case 4:
+                    sigGO(RED4, GRN4);
+                    break;
+            }
+                
+            Serial.println("Checking if car has left");
+            delay(TIMEGIVENMS);
+            
+            gone = checkIfGone(next, wt);
+            if(gone == -1)
+            {
+                receive();  // call it a second time to gather any other vehicles that showed up before swapping the queue.
+                    
+                switch(next)
+                {
+                    case 1:
+                        blinkGO(GRN1, RED1);
+                        watch[0]++;
+                        break;
+                    case 2:
+                        blinkGO(GRN2, RED2);
+                        watch[1]++;
+                        break;
+                    case 3:
+                        blinkGO(GRN3, RED3);
+                        watch[2]++;
+                        break;
+                    case 4:
+                        blinkGO(GRN4, RED4);
+                        watch[3]++;
+                        break;
+                }
+                
+                if(watch[0] >= 3 || watch[1] >= 3 || watch[2] >= 3 || watch[3] >= 3)
+                    blinkKILL();    // if a vehicle blows three chances, kill the process; probably an obstruction.
+                   
+                Serial.println("Checking if car has left again");
+                delay(TIMEGIVENMS);
+                gone = checkIfGone(next, wt);
+                
+                if(gone == -1 && queue[1] != 0)
+                {
+                    swap(&queue[0], &queue[1]);
+                }                  
+            }
+            else
+            {
+                    // call removeFromQueue(flag) to remove it from the queue
+                    removeFromQueue(next);
+                    
+                    switch(next)
+                    {
+                        case 1:
+                            s1 = false;
+                            watch[0] = 0;
+                            break;
+                        case 2:
+                            s2 = false;
+                            watch[1] = 0;
+                            break;
+                        case 3:
+                            s3 = false;
+                            watch[2] = 0;
+                            break;
+                        case 4:
+                            s4 = false;
+                            watch[3] = 0;
+                            break;
+                    }
+            }
+            // call pushElements() to organize the array so there are no zeroes in between two flags 
+            pushElements();
+        }
+    }
+}
+
+void loop()   // will loop for the remainder of the program's runtime
+{  
+    process();  // process will now internally call receive()
+}
