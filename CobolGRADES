@@ -1,0 +1,131 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.  StudentGradeTable.
+       AUTHOR.  Levi Whited.
+      * This program takes the exam grades of students and puts them into a table
+       
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT INPUT-FILE ASSIGN TO "N:\INPUT.TXT"
+		     ORGANIZATION IS LINE SEQUENTIAL.
+           SELECT REPORT-FILE ASSIGN TO "N:\OUTPUT.TXT"
+             ORGANIZATION IS LINE SEQUENTIAL.
+             
+       DATA DIVISION.
+       FILE SECTION.
+       FD INPUT-FILE
+           RECORD CONTAINS 37 CHARACTERS
+           DATA RECORD IS STUDENT-IN.
+       
+       01 STUDENT-IN.
+           05  FIRSTNAME       PIC X(10).
+           05  LASTNAME        PIC X(15). 
+           05  EXAMGRADE.
+               10 GRADEONE     PIC 9(3).
+               10 GRADETWO     PIC 9(3).
+               10 GRADETHREE   PIC 9(3).
+               10 GRADEFOUR    PIC 9(3).
+
+       FD REPORT-FILE
+           RECORD CONTAINS 43 CHARACTERS
+           DATA RECORD IS PRINT-REPORT.
+       01 PRINT-REPORT         PIC X(52).
+
+       WORKING-STORAGE SECTION.
+       01 DATA-REMAINS-SWITCH  PIC XX  VALUE SPACES.
+       01 REPORT-HEADING.
+           05  FILLER              PIC X(10)   VALUE 'FIRST NAME'.
+           05  FILLER              PIC X(3)    VALUE SPACES.
+           05  FILLER              PIC X(9)    VALUE 'LAST NAME '.
+           05  FILLER              PIC X(6)    VALUE SPACES.
+           05  FILLER              PIC X(7)    VALUE 'AVERAGE'.
+           05  FILLER              PIC X(3)    VALUE SPACES.
+           05  FILLER              PIC X(14)   VALUE 'CURVED AVERAGE'.
+           
+       01 REPORT-DETAIL.
+           05  PRINT-FIRST         PIC X(10).
+           05  FILLER              PIC X(3)    VALUE SPACES.
+           05  PRINT-LAST          PIC X(12).
+           05  FILLER              PIC X(3)    VALUE SPACES.
+           05  PRINT-AVE           PIC X(3).
+           05  FILLER              PIC X(7)    VALUE SPACES.
+           05  PRINT-CURVE         PIC X(3).
+           05  FILLER              PIC X(11)   VALUE SPACES.
+       
+       
+       01 STU-GRADE-TABLE.
+           05 STU-NAME OCCURS 10 TIMES.
+               10  TABLE-FIRST PIC X(10).
+               10  TABLE-LAST  PIC X(15).
+               10  STU-GRADES OCCURS 4 TIMES.
+                   15 TABLE-EXAMONE    PIC X(3).
+                   15 TABLE-EXAMTWO    PIC X(3).
+                   15 TABLE-EXAMTHREE  PIC X(3).
+                   15 TABLE-EXAMFOUR   PIC X(3).
+                       88 INCORRECT-INPUT VALUE ZEROES.
+                       
+       01 COUNTER               PIC 999.
+       01 AVERAGE               PIC 999.          
+       01 AVE-CURVE1            PIC 999.   
+       01 AVE-CURVE2            pic 999.
+       01 VAR-1                 pic 999.
+       01 VAR-2                 pic 999.
+       01 VAR-3                 pic 999.
+       01 VAR-4                 pic 999.
+       01 VAR-5                 pic 999.
+
+       PROCEDURE DIVISION.
+       Begin.
+           OPEN INPUT  INPUT-FILE
+                OUTPUT REPORT-FILE.
+           
+           READ INPUT-FILE 
+               AT END MOVE 'NO' TO DATA-REMAINS-SWITCH
+           END-READ.
+           
+               PERFORM WRITE-REPORT-HEADINGS
+          
+          PERFORM PROCESS-RECORDS
+               UNTIL DATA-REMAINS-SWITCH = 'NO'.
+               
+          CLOSE INPUT-FILE
+                REPORT-FILE.
+                
+         STOP RUN.
+         
+         WRITE-REPORT-HEADINGS.
+           MOVE REPORT-HEADING TO PRINT-REPORT.
+           WRITE PRINT-REPORT.
+           
+         PROCESS-RECORDS.
+           
+       
+           
+           compute average = 
+                       (GRADEONE +
+                        GRADETWO +
+                        GRADETHREE +
+                        GRADEFOUR ) / 4.
+           if AVERAGE IS GREATER THAN OR EQUAL TO 85 THEN
+               ADD 1 TO COUNTER
+               ELSE IF AVERAGE IS NOT GREATER THAN OR EQUAL TO 85 THEN
+               move AVERAGE TO AVE-CURVE1.
+              
+               
+           if COUNTER IS GREATER THAN 2 THEN
+           ADD 10 TO AVERAGE GIVING AVE-CURVE2
+           end-if
+           
+           MOVE FIRSTNAME TO PRINT-FIRST
+           MOVE LASTNAME TO PRINT-LAST
+           MOVE AVE-CURVE1 TO PRINT-AVE
+           MOVE AVE-CURVE2 TO PRINT-CURVE
+           move report-detail to print-report 
+           
+           write print-report
+           
+           read input-file
+               at end move 'NO' to data-remains-switch
+           end-read.
+           
+           end-program. program3.
