@@ -1,0 +1,105 @@
+/*
+* Course:   CSC400 Operating Systems
+* Program:  Assignment 3 Process Spawning & IPC
+* Names:    Riley Fisher (Fis4554@calu.edu), Levi Whited (WHI4530@calu.edu)
+*
+* Building Instructions:
+*  gcc child2.c -std=c11 -D_SVID_SOURCE -o child2 &&
+*  gcc a3main.c -std=c11 -D_SVID_SOURCE -o a3main
+*  ./a3main
+*
+*/
+
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/times.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
+#define CLK_TCK sysconf(_SC_CLK_TCK)
+
+struct msg {
+    int number;
+} my_msg;
+
+/**
+    Creates a factorial of given input  
+    @param n The number to be computed
+    @return The Factorial of the given input.
+*/
+double RecursiveFactor(double n) {
+    return (n == 1) ? 1 : n * RecursiveFactor(--n);
+}
+
+/**
+    Function to be used to create a new process  
+    @param n The number to be computed
+*/
+int child_proc(double value) {
+    struct tms running;
+    printf("[Child1]\tPID%d PPID:%i\n", getpid(), getppid());
+    for (int i = 0; i < 4000000; i++) {
+	RecursiveFactor(value);
+    }
+    times(&running);
+    printf("[Child1]\tIt took %.3f seconds to recursively compute %.0f\n", ((float) running.tms_utime / CLK_TCK), RecursiveFactor(value));
+    if (getppid() == 1) {
+        printf("[Child1]\tI am a zombie!\n");
+    }
+    exit(0);
+}
+
+int main() {
+    int exec, temp, msgqid, status, m_res;
+    int c_id_1, c_id_2;
+    key_t MQ_KEY = 12345;
+    printf("[Parent]\tPID%i\n", getpid());
+    if ((msgqid = msgget(MQ_KEY, IPC_CREAT | 0666)) < 0) {
+        printf("[Parent]\tmsgget failed!\n");
+        exit(1);
+    }
+    printf("[Parent]\tMessage Queue Sent, msgqid= %d\n", msgqid);
+    printf("Please enter a positive integer: ");
+    while (scanf("%d", &temp) != 1) {
+        while (getchar() != '\n');
+    }
+    if (temp < 0) {
+        printf("%d is not positive, ending...\n", temp);
+    }
+    my_msg.number = temp;
+    printf("[-Info-]\tSpawning Child\n");
+    if ((c_id_1 = fork()) == 0) {
+        child_proc(temp);
+    } else if (c_id_1 == -1) {
+        printf("[Parent]\tChild did not spawn [%i]\n", errno);
+    }
+
+    if ((c_id_2 = fork()) == 0) {
+        exec = execlp("./child2", "child2.c", 0);
+    } else if (c_id_2 == -1) {
+        printf("[Parent]\tChild did not spawn [%i]\n", errno);
+    }
+
+    if (msgsnd(msgqid, (struct msg*)&my_msg, sizeof(my_msg.number), IPC_NOWAIT) < 0) {
+        printf("[-Info]\tError Sending Message\n");
+        exit(0);
+    } else {
+        printf("[-Info-]\tMessage sent to queue %d bytes\n", sizeof(my_msg.number));
+    }
+    waitpid(c_id_1, &status, 0);
+    waitpid(c_id_2, &status, 0);
+    printf("[Parent]\tKilling children...\n");
+    printf("[-Info-]\tPID %d and PID %d are dead\n", c_id_1, c_id_2);
+    if (msgctl(msgqid, IPC_RMID, NULL) == -1) {
+        perror("[-Info-]\tmsgctl: msgctl failed\n");
+        exit(1);
+    } else {
+        printf("[-Info-]\tMessage (RMID) complete!\n");
+    }
+    return 0;
+}
