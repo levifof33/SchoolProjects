@@ -1,0 +1,2657 @@
+title Program3
+
+;CSC 323 Assembly 
+;Group Program 3
+;Group 9:
+;Levi Whited & JR MacDonald
+;whi4530@calu.edu & mac6501@calu.edu
+
+Include Irvine32.inc
+
+.data
+buffersize equ 80
+buffer byte buffersize dup(0)
+wordsbuffersize equ 4
+words byte wordsbuffersize dup(0)
+recordsize equ 8
+records byte recordsize dup(0)
+outputbuffersize equ 200
+outputbuffer byte outputbuffersize dup(0)
+NAMEBUFFERSIZE EQU 8
+NAMEBUFFER BYTE NAMEBUFFERSIZE DUP(0)
+BYTEBUFFERSIZE EQU 3
+BYTEBUFFER BYTE BYTEBUFFERSIZE DUP(0)
+BYTE2BUFFER BYTE BYTEBUFFERSIZE DUP(0)
+BYTE3BUFFER BYTE BYTEBUFFERSIZE DUP(0)
+SAMENAMEBUFFERSIZE EQU 80
+SAMENAMEBUFFER BYTE SAMENAMEBUFFERSIZE DUP(0)
+
+sizeofJob equ 14
+Jstatus equ 0
+Jpriority equ 1
+Jname equ 2
+Jloadtime equ 10
+Jruntime equ 12
+
+STEPBUFFER BYTE 140 DUP(0)
+LOCATIONBUFFER BYTE 10 DUP(0)
+
+STEPINSTANCE BYTE 0
+
+edikill sdword 0
+Jhold equ 2
+Jrun equ 1
+JavailLevel equ 0
+
+jobssize equ 140
+jobs byte jobssize dup(0)
+endofjobs SDWORD 0
+charcount sdword 0 
+currentjob byte ?
+cmdname byte ?
+nextjob byte ?
+highestpriority byte ?
+more sdword ?
+
+wordsize equ 4
+loadword byte wordsize dup(0)
+changeword byte wordsize dup(0)
+quitword byte wordsize dup(0)
+helpword byte wordsize dup(0)
+runword byte wordsize dup(0)
+holdword byte wordsize dup(0)
+killword byte wordsize dup(0)
+showword byte wordsize dup(0)
+stepword byte wordsize dup(0)
+
+menuline1 byte "Ready to process some jobs? ",0
+menuline2 byte "The commands are 'STEP', 'SHOW', 'KILL'",0
+menuline3 byte "'HOLD', 'RUN', 'LOAD', 'HELP', 'CHANGE' and 'QUIT'",0
+menuline4 byte "Enter just the command, and be prompted for parameters.",0
+menuline5 byte "Or enter the command with appropriate paramaters.",0
+menuline6 byte "If LOADing a job, enter the jobname, priority, status,",0
+menuline7 byte "and runtime seperated by spaces.",0
+menuline8 byte "CHANGE has two parameters, jobname and priority",0
+menuline9 byte "HOLD, RUN, and KILL have one parameter, the jobname",0
+menuline10 byte "STEP has one parameter, the number of times to step",0
+menuline11 byte "Please enter a command: ",0
+
+
+reprompt byte "Please enter another command: ",0
+changeprompt byte "What is the new priority? ",0
+BREAKOUTPUT BYTE "----------------------------------------",0
+ASKNAME BYTE "What is the name of the record? ",0
+askpriority byte "What is the priority? ",0
+askstatus byte "What is the status? ",0
+askruntime byte "What is the runtime? ",0
+onlyloadbyte byte "You only entered the load command, what are the other paramaters? ",0
+NAMEEXISTSBYTE BYTE "That record name already exists, try again ",0
+HASBEEN BYTE " has been killed. ",0
+PROCESSING1 BYTE "PROCESSING ",0
+ATTIME BYTE " AT TIME ",0
+COMPLETED BYTE "COMPLETED ",0
+HASBEENLOADED BYTE " has been loaded. ",0
+loadfullerror byte "There are already 10 jobs! Kill a job or try a different command.",0
+priorityerror byte "The priority cannot be higher than 7! Try again.",0
+statuserror byte "The status can only be A, H, or R. Try again.",0
+recorddoesntexist1 byte "That record name is not currently a job.",0
+ONLYKILLBYTE BYTE "You only entered the kill command.",0
+onlyrunbyte byte "You only entered the run command.",0
+onlyholdbyte byte "You only entered the hold command.",0
+onlychangebyte byte "You entered the change command.",0
+thatsnotacommand byte "That was not a proper command, try again. ",0
+
+
+HELPBYTE1 BYTE "Use LOAD to enter in a job. Use KILL to remove out a job.",0
+helpbyte2 byte "Use RUN to change a job status to 'R'. Use HOLD to change a job status to 'H'.",0
+helpbyte3 byte "Use SHOW to display all jobs. Use STEP to process records.",0
+helpbyte4 byte "Only jobs with a RUN ('R') status can be processed.",0
+helpbyte5 byte "Use CHANGE to change a job's priority.",0
+quitbyte byte "Good bye!",0
+
+systemtime1 byte 0
+jobrecord sdword 0
+command sdword 0
+job sdword 0
+commandcount sdword 0
+
+edisave sdword 0
+esisave sdword 0
+loadpoint sdword 0
+entry1 byte 0
+jobindex sdword 0
+starttime byte 0
+Jstarttime sdword 0
+status byte 0
+priority byte 0
+getnumbercount sdword 0
+getawordcharcount sdword 0
+runtime byte 0
+loadcount1 byte 0
+getwordcount byte 0
+endofjobsindex sdword 0
+traverseindex sdword 0
+getanotherwordcount sdword 0
+getanother sdword 0
+killindex sdword 0
+stepcount BYTE 0
+showindex sdword 0
+steppriority byte 0
+numberofHPrecords byte 0
+stepCompare byte 0
+COMPAREnumberofHPrecords byte 0
+ENTRY3 SDWORD 0
+entry5 byte 0
+SPACEBYTE BYTE " ",0
+ENDOFJOBS1 SDWORD 0
+STEPVAR BYTE 0
+PROMPTENTRY BYTE 0
+newpriority byte 0
+NAMECHECKCOUNT SDWORD 0
+NAMECHECKVAR BYTE 0
+starttime1 byte 0
+EDILOADSAVE SDWORD 0
+NUMBEROFJOBS SDWORD 0
+HASBEENCOUNT SDWORD 0
+HASBEENSAVE SDWORD 0
+satcount sdword 0
+SUNDER SDWORD 0
+SUNCOUNT SDWORD 0
+
+
+hasbeenOUTPUT byte 8 dup(0)
+
+.code
+main PROC
+
+
+
+mov esi, 0									;set these 9 word buffers equal to their correct command letters
+mov loadword[esi], 4Ch						;to compare the input buffer to
+add esi, 1
+mov loadword[esi], 4Fh
+add esi, 1
+mov loadword[esi], 41h
+add esi, 1
+mov loadword[esi], 44h
+
+mov esi, 0
+mov quitword[esi], 51h
+add esi, 1
+mov quitword[esi], 55h
+add esi, 1
+mov quitword[esi], 49h
+add esi, 1
+mov quitword[esi], 54h
+
+mov esi, 0
+mov helpword[esi], 'H'
+add esi, 1
+mov helpword[esi], 'E'
+add esi, 1
+mov helpword[esi], 'L'
+add esi, 1
+mov helpword[esi], 'P'
+
+mov esi, 0
+mov runword[esi], 'R'
+add esi, 1
+mov runword[esi], 'U'
+add esi, 1
+mov runword[esi], 'N'
+
+mov esi, 0
+mov holdword[esi], 'H'
+add esi, 1
+mov holdword[esi], 'O'
+add esi, 1
+mov holdword[esi], 'L'
+add esi, 1
+mov holdword[esi], 'D'
+
+mov esi, 0
+mov killword[esi], 'K'
+add esi, 1
+mov killword[esi], 'I'
+add esi, 1
+mov killword[esi], 'L'
+add esi, 1
+mov killword[esi], 'L'
+
+mov esi, 0
+mov showword[esi], 'S'
+add esi, 1
+mov showword[esi], 'H'
+add esi, 1
+mov showword[esi], 'O'
+add esi, 1
+mov showword[esi], 'W'
+
+mov esi, 0
+mov stepword[esi], 'S'
+add esi, 1
+mov stepword[esi], 'T'
+add esi, 1
+mov stepword[esi], 'E'
+add esi, 1
+mov stepword[esi], 'P'
+
+mov esi, 0
+mov changeword[esi], 'C'
+add esi, 1
+mov changeword[esi], 'H'
+add esi, 1
+mov changeword[esi], 'A'
+add esi, 1
+mov changeword[esi], 'N'
+
+mov EDI, 0
+call crlf										;WRITE MENU TO SCREEN
+mov edx, offset menuline1
+call writestring
+call crlf
+mov edx, offset menuline2
+call writestring
+call crlf
+mov edx, offset menuline3
+call writestring
+call crlf
+mov edx, offset menuline4
+call writestring
+call crlf
+mov edx, offset menuline5
+call writestring
+call crlf
+mov edx, offset menuline6
+call writestring
+call crlf
+mov edx, offset menuline7
+call writestring
+call crlf
+mov edx, offset menuline8
+call writestring
+call crlf
+mov edx, offset menuline9
+call writestring
+call crlf
+mov edx, offset menuline10
+call writestring
+call crlf
+mov EDX, OFFSET menuline11		
+call WriteString				
+call Crlf					    
+
+
+enterdata:					
+MOV EAX, 0
+mov EDX, OFFSET buffer			;prepares edx register with input buffer
+mov ECX, sizeof buffer			;ecx register has the size of the input buffer	
+call ReadString					;reads data into eax register
+mov esi, 1
+
+jmp skipspace
+
+reenterdata:					;reprompt loop 
+MOV EDI, 0
+call crlf						;move to next line in output
+mov edx, offset reprompt		;reprompt for next number or symbol/letter
+MOV EAX, 0
+call WriteString				;write to the screen
+call Crlf						;move to the next line in output
+mov edx, offset buffer			;prepare buffer for input
+mov ecx, sizeof buffer			;prepare buffer for input
+call ReadString					;read input from screen
+mov edx, 0						;reinitialize edx, so incase something wasnt popped, it doesnt carry over to the foundone pushit
+jmp skipspace
+
+skipspace:						;loop to check if data entered was a space	
+mov charcount, eax				;puts eax register(number of string bytes entered) into charcount variable
+cmp charcount, 0				;compares charcount to 0, verifying that data was indeed entered
+jle emptybuffer					;otherwise, jump to emptybuffer
+
+nextspace:						;loop that checks data against space/tab and detects number
+cmp buffer[EDI], 20h			;compare to tab
+je nextchar						;if so, move to nextchar
+cmp buffer[EDI], 9h				;compare to space
+je nextchar1					;if equal to space, move to next char
+jmp foundone1					;if not equal, we have a number, jumps to foundone
+
+nextchar:						;loop to move to the next space in the buffer
+inc EDI							;move next space in the buffer
+cmp charcount, EDI				;compare the charcount to the position in buffer, if ESI is greater than charcount, then moved past data
+JG nextspace					;jump back to nextspace loop
+jmp emptybuffer					;if esi is greater, buffer data must be empty, jump to emptybuffer 
+
+foundone1:									;found something in the input buffer
+mov esi, 0									;move wordbuffer index to first spot
+foundone2:
+cmp edi, charcount							;compare charcount to inputbuffer index
+jge endofwordcopy							;if greater or equal, jump to end
+call getcommand								;get command from input buffer
+jmp comparetoload						;jump to compare to command list
+
+comparetoload:
+cld											;clear direction
+mov esi, offset words
+mov edisave, edi
+mov edi, offset loadword
+mov ecx, 4
+repe cmpsb									;compare input buffer command to load
+jne comparetoshow							;if not go to the next
+jmp loadcommand								;if so, jump to loadcommand
+
+comparetoshow:
+cld											;compare input command to show
+mov esi, offset words
+mov edisave, edi
+mov edi, offset showword
+mov ecx, 4								
+repe cmpsb
+jne comparetostep
+jmp showcommand
+
+comparetostep:
+cld												;compare to step						
+mov esi, offset words
+mov edisave, edi
+mov edi, offset stepword
+mov ecx, 4								
+repe cmpsb
+jne comparetokill
+jmp stepcommand
+
+comparetokill:								;compare to kill
+cld									
+mov esi, offset words
+mov edisave, edi
+mov edi, offset killword
+mov ecx, 4								
+repe cmpsb
+jne comparetohold
+jmp killcommand
+
+comparetohold:							;compare to hold
+cld											
+mov esi, offset words
+mov edisave, edi
+mov edi, offset holdword
+mov ecx, 4								
+repe cmpsb
+jne comparetorun
+jmp holdcommand
+
+comparetorun:						;compare to run
+cld											
+mov esi, offset words
+mov edisave, edi
+mov edi, offset runword
+mov ecx, 3								
+repe cmpsb
+jne comparetochange
+jmp runcommand
+
+comparetochange:
+cld										;compare to change
+mov esi, offset words
+mov edisave, edi
+mov edi, offset changeword
+mov ecx, 4								
+repe cmpsb
+jne comparetohelp
+jmp changecommand
+
+comparetohelp:
+cld											;compare to help
+mov esi, offset words
+mov edisave, edi
+mov edi, offset helpword
+mov ecx, 4								
+repe cmpsb
+jne comparetoquit
+jmp helpcommand
+
+comparetoquit:
+cld											;compare to quit
+mov ecx, 4
+mov esi, offset words
+mov edisave, edi
+mov edi, offset quitword
+repe cmpsb
+jne inputerror
+jmp quitcommand
+
+;in the commands, we'll get the operand info using call getword, getnumber
+
+
+stepcommand:										;no operands - prompt for number of steps
+CMP CHARCOUNT, 5						;if less than 5 characters, no operand
+JL STEPCOMMANDPROMPT
+
+MOV EDI, 5
+call getnumber						;takes care of the amount of times to steP
+cmp entry1, 31h
+je steparg1
+CMP ENTRY1, 32h						;find out if a number is 1-9
+JE STEPARG2
+CMP ENTRY1, 33h
+je steparg3
+cmp entry1, 34h
+je steparg4
+cmp entry1, 35h
+je steparg5
+cmp entry1, 36h
+je steparg6
+cmp entry1, 37h
+je steparg7
+cmp entry1, 38h
+je steparg8
+cmp entry1, 39h
+je steparg9
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPARG1:							;steparg finds determines whethers its a single digit or multiple digits
+CMP SATCOUNT, 1						;based on if this count is 1		
+JE STEPBLAH1						;if it is, jump to stepblah1
+ADD ENTRY1, 48						;if not its the multiple digit number
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH1:
+MOV ENTRY1, 1d						;must have been the 1 digit number, so make it 1d
+jmp stepcommandpromptentry
+
+STEPARG2:						;same as steparg1
+CMP SATCOUNT, 1
+JE STEPBLAH2
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH2:
+MOV ENTRY1, 2d
+jmp stepcommandpromptentry
+
+STEPARG3:
+CMP SATCOUNT, 1
+JE STEPBLAH3
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH3:
+MOV ENTRY1, 3d
+jmp stepcommandpromptentry
+
+STEPARG4:
+CMP SATCOUNT, 1
+JE STEPBLAH4
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH4:
+MOV ENTRY1, 4d
+jmp stepcommandpromptentry
+
+STEPARG5:
+CMP SATCOUNT, 1
+JE STEPBLAH5
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH5:
+MOV ENTRY1, 5d
+jmp stepcommandpromptentry
+
+STEPARG6:
+CMP SATCOUNT, 1
+JE STEPBLAH6
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH6:
+MOV ENTRY1, 6d
+jmp stepcommandpromptentry
+
+STEPARG7:
+CMP SATCOUNT, 1
+JE STEPBLAH7
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH7:
+MOV ENTRY1, 7d
+jmp stepcommandpromptentry
+
+STEPARG8:
+CMP SATCOUNT, 1
+JE STEPBLAH8
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH8:
+MOV ENTRY1, 8d
+jmp stepcommandpromptentry
+
+STEPARG9:
+CMP SATCOUNT, 1
+JE STEPBLAH9
+ADD ENTRY1, 48
+JMP STEPCOMMANDPROMPTENTRY
+
+STEPBLAH9:
+MOV ENTRY1, 9d
+jmp stepcommandpromptentry
+
+STEPCOMMANDPROMPTENTRY:				;this is where the noncommand line step enters
+mov eBx, 0
+mov Bl, entry1
+ADD ENTRY1, 1
+ADD BL, 1
+MOV ECX, 0
+MOV CL, ENTRY1								
+MOV STEPVAR, CL							;set up number of times to step
+steppart1:
+cmp BL, 31h								;cmp to 1 since was not agreeable with 0
+jnE steppart2
+jmp endcommand
+
+steppart2:
+mov edi, 0
+mov esi, 0
+mov ebx, 0
+mov eax, 0
+
+ARRAYTRANSFER:
+mov AL, JOBS[EDI]
+MOV STEPBUFFER[ESI], AL					;move in the jobs buffer into the stepbuffer
+INC EDI
+INC ESI
+CMP EDI, ENDOFJOBS
+JL ARRAYTRANSFER
+
+MOV EDI, 0
+MOV ESI, 0
+MOV EAX, 0
+MOV ENDOFJOBS1, 14
+
+ohyeah0:
+cmp stepbuffer[esi], 'R'
+je ohyeah1									;KILL ALL JOBS THAT DONT START WITH AN R in the stepbuffer
+call killstep
+
+ohyeah1:
+cmp EAX, endofjobs
+jge ohyeah2									;keep killing non R jobs until done with records
+ADD ESI, 14
+ADD ENDOFJOBS1, 14
+MOV EAX, ENDOFJOBS1
+jmp ohyeah0
+
+ohyeah2:							;only 'R's are left
+mov esi, 1
+mov eax, 0
+mov ebx, 0
+mov endofjobs1, 14
+
+movepastblanks1:
+CMP STEPBUFFER[ESI], 20h				;if a previous job was killed, need to skip past it
+je movepastblanks2
+MOV ENDOFJOBS1, 0
+jmp ohyeah3
+
+movepastblanks2:
+add esi, 14								;MOVE PAST KILLED HOLD RECORD, IF NEED BE
+mov endofjobs1, 28	
+CMP STEPBUFFER[ESI], 20h
+je movepastblanks3
+MOV ENDOFJOBS1, 14
+jmp ohyeah3									
+
+movepastblanks3: 
+add esi, 14								;keep moving past killed records
+mov endofjobs1, 42
+cmp stepbuffer[esi], 20h
+je movepastblanks4
+MOV ENDOFJOBS1, 28
+jmp ohyeah3
+
+movepastblanks4: 
+add esi, 14
+mov endofjobs1, 56
+cmp stepbuffer[esi], 20h
+je movepastblanks5
+MOV ENDOFJOBS1, 42
+jmp ohyeah3
+
+movepastblanks5: 
+add esi, 14
+mov endofjobs1, 70
+cmp stepbuffer[esi], 20h
+je movepastblanks6
+MOV ENDOFJOBS1, 56
+jmp ohyeah3
+
+movepastblanks6: 
+add esi, 14
+mov endofjobs1, 84
+cmp stepbuffer[esi], 20h
+je movepastblanks7
+MOV ENDOFJOBS1, 70
+jmp ohyeah3
+
+movepastblanks7: 
+add esi, 14
+mov endofjobs1, 98
+cmp stepbuffer[esi], 20h
+je movepastblanks8
+MOV ENDOFJOBS1, 84
+jmp ohyeah3
+
+movepastblanks8: 
+add esi, 14
+mov endofjobs1, 112
+cmp stepbuffer[esi], 20h
+je movepastblanks9
+MOV ENDOFJOBS1, 98
+jmp ohyeah3
+
+movepastblanks9: 
+add esi, 14
+mov endofjobs1, 126
+cmp stepbuffer[esi], 20h
+je movepastblanks10
+MOV ENDOFJOBS1, 112
+jmp ohyeah3
+
+movepastblanks10:
+jmp ohyeah3
+
+dontreplacewithspace:					;dont replace the stepcompare with 20h, will mess things up
+add esi, 14
+ADD ENDOFJOBS1, 14
+MOV EBX, ENDOFJOBS1
+CMP EBX, ENDOFJOBS
+JGE OHYEAH5
+JMP OHYEAH4
+
+ohyeah3:
+CMP STEPBUFFER[ESI], 20h
+je dontreplacewithspace 
+mov al, stepbuffer[esi]						;MOVE FIRST PRIORITY INTO STEPCOMPARE, IF ITS NOT A SPACE
+mov stepcompare, al
+ADD ENDOFJOBS1, 14
+MOV EBX, ENDOFJOBS1
+CMP EBX, ENDOFJOBS
+JGE OHYEAH5
+add esi, 14								;JUMP TO NEXT RECORD
+ohyeah4:
+cmp stepbuffer[esi], al					;COMPARING NEXT RECORD TO FIRST PRIORITY
+jl replacestepcompare					;IF NEXT PRIORITY IS HIGHER, JUMP TO REPLACE "HIGH PRIORITY"
+add ESI, 14
+ADD ENDOFJOBS1, 14
+MOV EBX, ENDOFJOBS1
+cmp EBX, endofjobs
+jge ohyeah5											;IF JGE, WE NOW HAVE THE HIGHEST PRIORITY IN STEPCOMPARE
+jmp ohyeah4		
+
+replacestepcompare:
+CMP STEPBUFFER[ESI], 20h
+je dontreplacewithspace
+mov eax, 0										;IF PRIORITY IS HIGHER, REPLACE STEPCOMPARE WITH IT
+mov stepcompare, 0
+mov al, stepbuffer[esi]
+mov stepcompare, al
+add esi, 14
+ADD ENDOFJOBS1, 14
+MOV EBX, ENDOFJOBS1
+cmp EBX, endofjobs
+jge ohyeah5
+jmp ohyeah4
+
+ohyeah5:									
+mov esi, 1
+CMP STEPBUFFER[ESI], 20h					;SKIP KILLED JOBS
+je skipdamnspace
+JMP OHYEAH6
+
+skipdamnspace:
+add esi, 14
+cmp stepbuffer[esi], 20h
+je skipdamnspace
+
+ohyeah6:
+mov eax, 0
+mov al, stepcompare
+cmp stepbuffer[esi], al					;COMPARE RECORD PRIORITY WITH HIGH PRIORITY (STEPCOMPARE)
+je keepit							;IF IT IS HIGHEST PRIORITY, KEEP IT
+jmp getridofit						;IF NOT, GET RID OF IT
+
+getridofit:						;kill job with lower priority
+ADD ESI, -1
+call KILLSTEP								;make sure esi goes to same place as previous stepkill was
+ADD ESI, 1
+cmp esi, endofjobs
+jge ohyeah7
+jmp ohyeah6
+
+keepit:							;keep jobs with highest priority
+add esi, 14
+cmp esi, endofjobs
+jge ohyeah7
+jmp ohyeah6 
+
+ohyeah7:
+MOV ENDOFJOBS1, 14
+mov esi, 0
+mov edi, 0
+MOV EAX, 0
+ohyeah8:								;figure out how many records have the highest priority
+cmp stepbuffer[esi], 'R'
+jne next1
+mov locationbuffer[edi], 0				
+add numberofHPrecords, 1
+add edi, 1
+
+
+next1:
+add esi, 14								;does the second record have the highest priority?
+cmp stepbuffer[esi], 'R'
+jne next2
+mov locationbuffer[edi], 14
+add numberofHPrecords, 1
+add edi, 1
+ADD ENDOFJOBS1, 14
+MOV EAX, ENDOFJOBS1
+CMP EAX, ENDOFJOBS
+JGE NEXTDONE
+
+next2:
+add esi, 14									;keep finding the high priority records
+cmp stepbuffer[esi], 'R'
+jne next3
+mov locationbuffer[edi], 28
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next3:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next4
+mov locationbuffer[edi], 42
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next4:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next5
+mov locationbuffer[edi], 56
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next5:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next6
+mov locationbuffer[edi], 70
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next6:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next7
+mov locationbuffer[edi], 84
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next7:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next8
+mov locationbuffer[edi], 98
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next8:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne next9
+mov locationbuffer[edi], 112
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+next9:
+add esi, 14
+cmp stepbuffer[esi], 'R'
+jne NEXTDONE
+mov locationbuffer[edi], 126
+add numberofHPrecords, 1
+add edi, 1
+CMP ESI, ENDOFJOBS
+JGE NEXTDONE
+
+NEXTDONE:
+cmp stepcount, 0									;stepcount keeps track of which high priority record to step
+je locationbuffer0									;so it does the NEXT and not the first
+cmp stepcount, 1
+je locationbuffer1
+cmp stepcount, 2
+je locationbuffer2
+cmp stepcount, 3
+je locationbuffer3
+cmp stepcount, 4
+je locationbuffer4
+cmp stepcount, 5
+je locationbuffer5
+cmp stepcount, 6
+je locationbuffer6
+cmp stepcount, 7
+je locationbuffer7
+cmp stepcount, 8
+je locationbuffer8
+cmp stepcount, 9
+je locationbuffer9
+
+locationbuffer0:								;the location buffers tell ESI where to be to step the correct record
+mov esi, 0
+jmp bangbang
+locationbuffer1:
+mov esi, 1
+jmp bangbang
+locationbuffer2:
+mov esi, 2
+jmp bangbang
+locationbuffer3:
+mov esi, 3
+jmp bangbang
+locationbuffer4:
+mov esi, 4
+jmp bangbang
+locationbuffer5:
+mov esi, 5
+jmp bangbang
+locationbuffer6:
+mov esi, 6
+jmp bangbang
+locationbuffer7:
+mov esi, 7
+jmp bangbang
+locationbuffer8:
+mov esi, 8
+jmp bangbang
+locationbuffer9:
+mov esi, 9
+jmp bangbang
+
+
+bangbang:								;got there, call step procedure
+call step
+
+
+stepcontinueagain:
+CMP STEPVAR, 2
+JE ENDCOMMAND						;deals with the count of how many times to step
+MOV EBX, 0				
+MOV BL, STEPVAR								
+DEC BL
+DEC STEPVAR							;dec the total step count by 1
+jmp steppart1
+
+STEPEND1:
+;ERROR
+jmp endcommand
+
+showcommand:
+CALL SHOW						;displays the jobs to screen
+JMP ENDCOMMAND
+;no operands - show jobs (all the records)
+killcommand:
+;one operand - what record/job to kill (has to be in hold mode)
+CMP CHARCOUNT, 5				;if charcount is less than 5, there was no parameter
+JL KILLCOMMANDPROMPT			;go prompt for it
+
+killnametraverse:
+MOV RECORDS, 0
+MOV EDI, 0
+CALL getword					;get recordname to kill
+mov esi, offset jobs
+JMP KILLNAMETRAVERSE1
+
+KILLCOMMANDPROMPTENTRY:
+MOV ESI, OFFSET JOBS
+
+killnametraverse1:
+cld 
+mov esisave, esi
+add esi, 2							;traverse through finding the recordname in jobs
+mov edi, offset records
+mov ecx, 8
+repe cmpsb
+jne killnametraverse2
+mov edx, 5						;indicates I found one
+jmp killnametraverseend
+
+killnametraverse2:
+MOV ESI, ESISAVE
+cmp esi, numberofjobs				;havent found one yet, jump up and try again
+jge recorddoesntexist
+add traverseindex, 14
+add esi, 14
+JMP killNAMETRAVERSE1
+
+killnametraverseend:
+;esi is at the beginning of the job with the matched record name
+call kill									;call kill procedure to see if job can be killed, and if it can, then it will kill it
+jmp ENDCOMMAND
+
+
+holdcommand:
+CMP CHARCOUNT, 5
+JL HOLDCOMMANDPROMPT
+;one operand - changes job from run mode to hold mode (dont worry about what mode its currently in, just make the mode hold)
+nametraverse:
+MOV RECORDS, 0
+MOV EDI, 0
+CALL getword						;get recordname to change to hold
+mov esi, offset jobs
+JMP NAMETRAVERSE1
+
+HOLDCOMMANDPROMPTENTRY:
+MOV ESI, OFFSET JOBS
+
+nametraverse1:
+cld 
+mov esisave, esi
+add esi, 2							;traverse records looking for matching recordname
+mov edi, offset records
+mov ecx, 8
+repe cmpsb
+jne nametraverse2
+mov edx, 5						;indicates I found one
+jmp nametraverseend
+
+nametraverse2:
+MOV ESI, ESISAVE
+cmp esi, numberofjobs				;move to next record and try again
+jge recorddoesntexist
+add traverseindex, 14
+add esi, 14
+JMP NAMETRAVERSE1
+
+
+nametraverseend:
+;esi is at the beginning of the job with the matched record name
+call hold					;call hold procedure to change record status to hold
+CALL SHOW
+jmp ENDCOMMAND
+
+runcommand:
+;one operand - changes job from hold mode to run mode (dont worry about what mode its currently in, just make it run mode)
+CMP CHARCOUNT, 4
+JL RUNCOMMANDPROMPT
+
+RUNnametraverse:
+MOV RECORDS, 0
+MOV EDI, -1
+CALL getword
+mov esi, offset jobs
+JMP RUNNAMETRAVERSE1
+
+RUNCOMMANDPROMPTENTRY:
+MOV ESI, OFFSET JOBS
+
+RUNnametraverse1:
+cld 
+mov esisave, esi
+add esi, 2					;traverse through looking for matching recordname
+mov edi, offset records
+mov ecx, 8
+repe cmpsb
+jne RUNnametraverse2
+mov edx, 5						;indicates I found one
+jmp RUNnametraverseend
+
+RUNnametraverse2:
+MOV ESI, ESISAVE
+cmp esi, numberofjobs
+jge recorddoesntexist
+add traverseindex, 14
+add esi, 14
+JMP RUNNAMETRAVERSE1
+
+
+RUNnametraverseend:
+;esi is at the beginning of the job with the matched record name
+call run						;call run procedure to change job's status to run
+CALL SHOW
+jmp ENDCOMMAND
+
+loadcommand:
+;5 operands - name, priority, status, runtime, starttime
+MOV NAMECHECKCOUNT, 0				;if less than 5, there were no parameters, go get them
+CMP CHARCOUNT, 5
+JL LOADCOMMANDPROMPT
+
+mov edi, 0
+
+loadrecordname:
+call getword						;get job name from input buffer
+CMP ENDOFJOBS, 0
+JE LOADRECORDNAME3					;if endofjobs is 0, then we dont have to check to see if record name already exists	
+
+MOV EDISAVE, EDI
+
+MOV ESI, OFFSET JOBS
+JMP NAMECHECK1
+
+
+NAMECHECK1:							;check to see if record name already exists
+MOV ESISAVE, ESI
+CLD
+ADD ESI, 2
+MOV EDI, OFFSET RECORDS
+MOV ECX, 8
+REPE CMPSB
+JE NAMECHECK2
+MOV ESI, ESISAVE
+ADD ESI, 14
+ADD NAMECHECKCOUNT, 14
+MOV EAX, 0
+MOV EAX, NAMECHECKCOUNT
+CMP EAX, ENDOFJOBS
+JGE LOADRECORDNAME2
+JMP NAMECHECK1
+
+NAMECHECK2:
+MOV EDX, OFFSET NAMEEXISTSBYTE
+CALL WRITESTRING
+JMP ENDCOMMAND
+
+LOADRECORDNAME2:
+MOV EDI, EDISAVE
+LOADRECORDNAME3:
+add edi, 1
+jmp loadpriority
+
+loadpriority:
+mov eax, 0
+call getZnumber					;get priority from input buffer
+mov al, 0
+mov al, entry1
+mov priority, al
+
+loadstatus:
+add edi, 2
+cmp buffer[edi], 'A'
+je loadnext3						;get status from input buffer
+cmp buffer[edi], 'H'
+je loadnext3
+cmp buffer[edi], 'R'
+je loadnext3
+cmp buffer[edi], 'a'
+je loadnext4
+cmp buffer[edi], 'h'
+je loadnext5
+cmp buffer[edi], 'r'
+je loadnext6
+jmp loadstatuserror
+
+loadnext3:
+mov eax, 0
+mov al, buffer[edi]							;if the status is capital, put it into status
+mov status, al
+jmp loadruntime
+
+loadnext4:							;if they were lowercase, jumped here to make capital letters
+mov al, 'A'
+mov status, al
+jmp loadruntime
+loadnext5:
+mov al, 'H'
+mov status, al
+jmp loadruntime
+loadnext6:
+mov al, 'R'
+mov status, al
+jmp loadruntime
+
+loadruntime:
+call getnumber							;get runtime from inputbuffer
+mov al, 0
+mov al, entry1
+mov runtime, al
+JMP LOADTIMEDD							;loadcommandprompt in below, so skip all that
+
+LOADTIMEARGH:
+CMP SUNDER, 1						;if 1, its multiple digits
+JE LOADTIMEBB0
+JMP LOADTIMECC
+
+LOADTIMEBB0:
+CMP RUNTIME, 31h					;runtime is either 1 char or 1 decimal, need to differentiate
+je loadtimebb1
+cmp runtime, 32h
+je loadtimebb2
+cmp runtime, 33h
+je loadtimebb3
+cmp runtime, 33h
+je loadtimebb4
+cmp runtime, 34h
+je loadtimebb5
+cmp runtime, 35h
+je loadtimebb6
+cmp runtime, 36h
+je loadtimebb6
+cmp runtime, 37h
+je loadtimebb7
+cmp runtime, 38h
+je loadtimebb8
+cmp runtime, 39h
+je loadtimebb9
+JMP LOADSTARTTIME
+
+LOADTIMEBB1:
+MOV RUNTIME, 49d						;its 49d and not 1 char
+jmp loadstarttime
+
+LOADTIMEBB2:
+MOV RUNTIME, 50d						;its 50d and not 2 char
+jmp loadstarttime
+
+LOADTIMEBB3:
+MOV RUNTIME, 51d
+jmp loadstarttime
+
+LOADTIMEBB4:
+MOV RUNTIME, 52d
+jmp loadstarttime
+
+LOADTIMEBB5:
+MOV RUNTIME, 53d
+jmp loadstarttime
+
+LOADTIMEBB6:
+MOV RUNTIME, 54d
+jmp loadstarttime
+
+LOADTIMEBB7:
+MOV RUNTIME, 55d
+jmp loadstarttime
+
+LOADTIMEBB8:
+MOV RUNTIME, 56d
+jmp loadstarttime
+
+LOADTIMEBB9:
+MOV RUNTIME, 57d
+jmp loadstarttime
+
+LOADTIMECC:
+CMP SUNCOUNT, 1					;if this is equal to one, then its supposed to be 1d and not the 1char(49h)
+JE LCONE1ONEDIGIT
+
+LOADTIMEDD:
+CMP RUNTIME, '1'					;need to differentiate load from commandline (above stuff was from prompting)
+JE LCONE1
+CMP RUNTIME, '2'
+JE LCONE2
+CMP RUNTIME, '3'
+JE LCONE3
+CMP RUNTIME, '4'
+JE LCONE4
+CMP RUNTIME, '5'
+JE LCONE5
+CMP RUNTIME, '6'
+JE LCONE6
+CMP RUNTIME, '7'
+JE LCONE7
+CMP RUNTIME, '8'
+JE LCONE8
+CMP RUNTIME, '9'
+JE LCONE9
+JMP LOADSTARTTIME
+
+lcone1:											
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h						;find out if they are 1 digit (1-9decimal) or 2 digit(48-56decimal)
+je lcone1onedigit
+jmp lcone1a
+
+lcone1onedigit:
+ADD runtime, -30h								;if its one digit, make it the 1 digit number
+mov al, runtime 
+jmp loadstarttime
+
+lcone1a:
+mov runtime, 49d							;otherwise make it the 2 digit number
+jmp loadstarttime
+
+lcone2:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone2onedigit
+jmp lcone2a
+
+lcone2onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone2a:
+mov runtime, 50d
+jmp loadstarttime
+
+lcone3:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone3onedigit
+jmp lcone3a
+
+lcone3onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone3a:
+mov runtime, 51d
+jmp loadstarttime
+
+lcone4:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone4onedigit
+jmp lcone4a
+
+lcone4onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone4a:
+mov runtime, 52d
+jmp loadstarttime
+
+lcone5:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone5onedigit
+jmp lcone5a
+
+lcone5onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone5a:
+mov runtime, 53d
+jmp loadstarttime
+
+lcone6:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone6onedigit
+jmp lcone6a
+
+lcone6onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone6a:
+mov runtime, 54d
+jmp loadstarttime
+
+lcone7:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone7onedigit
+jmp lcone7a
+
+lcone7onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone7a:
+mov runtime, 55d
+jmp loadstarttime
+
+lcone8:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone8onedigit
+jmp lcone8a
+
+lcone8onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone8a:
+mov runtime, 56d
+jmp loadstarttime
+
+lcone9:
+mov edisave, edi
+MOV EDI, CHARCOUNT
+ADD EDI, -1
+CMP BUFFER[EDI], 20h
+je lcone9onedigit
+jmp lcone9a
+
+lcone9onedigit:
+ADD runtime, -30h
+mov al, runtime 
+jmp loadstarttime
+
+lcone9a:
+mov runtime, 57d
+jmp loadstarttime
+
+loadstarttime:
+mov edi, edisave								;move 'n' into starttime for not yet available
+add edi, 1
+mov al, 0
+mov al, 'N'
+mov starttime, al
+
+callload:
+call load				;number strings (priority, runtime, starttime) need converted to multi-digit numbers, otherwise data in recordname, priority, status, runtime, and starttime variables
+mov ebx, 0
+mov ebx, endofjobs
+mov jobindex, ebx
+ADD ENDOFJOBS, 14
+CALL SHOW
+mov words, 0
+MOV RECORDS, 0						;reset everything for next load
+MOV STARTTIME, 0
+MOV RUNTIME, 0
+MOV STATUS, 0
+MOV PRIORITY, 0
+MOV SUNCOUNT, 0
+MOV SUNDER, 0
+jmp endcommand
+
+loadstatuserror:
+mov edx, offset statuserror						;a letter was entered for priority that wasnt a, h, or r
+call writestring
+jmp endcommand
+
+
+
+helpcommand:
+;no operands - shows meaningful instructions
+CALL HELP										;show help 
+jmp endcommand
+
+
+changecommand:
+;1 operand - jobname and then prompt for new priority (change just changes priority)
+CMP CHARCOUNT, 7
+JL THERESNEITHER						;determines what parameters we have, and which ones are needed
+MOV EDI, 7
+CMP BUFFER[EDI], 41h
+jl theresonlythepriority
+cmp buffer[edi], 5Ah
+jg theresonlythepriority
+
+
+MOV RECORDS, 0
+MOV EDI, 0
+CALL CHANGEgetword						;get word from input buffer
+mov esi, offset jobs
+JMP CHANGENAMETRAVERSE1
+
+CHANGECOMMANDPROMPTENTRY:			;this is where the changecommandprompt re-enters
+MOV ESI, OFFSET JOBS
+
+CHANGEnametraverse1:
+cld 
+mov esisave, esi
+add esi, 2					;traverse jobs to find matching record
+mov edi, offset records
+mov ecx, 8
+repe cmpsb
+jne CHANGEnametraverse2
+mov edx, 5						;indicates I found one
+jmp CHANGEnametraverseend
+
+CHANGEnametraverse2:
+MOV ESI, ESISAVE
+cmp esi, numberofjobs
+jge recorddoesntexist
+add traverseindex, 14
+add esi, 14
+JMP CHANGENAMETRAVERSE1
+
+
+CHANGEnametraverseend:
+;esi is at the beginning of the job with the matched record name
+
+cmp newpriority, 0
+jne changenametraverseend1
+add charcount, -1
+mov edi, charcount
+ADD EDI, -1							;gets information on what to change the new priority to
+CMP BUFFER[EDI], 20h
+jne newpriority1
+add edi, 1
+mov eax, 0
+mov al, buffer[edi]
+mov newpriority, al
+
+
+NEWPRIORITY1:
+cmp newpriority, 0
+jne changenametraverseend1
+MOV ESI, 0
+MOV EDI, 0
+MOV EDX, OFFSET ASKPRIORITY					;ask for priority
+CALL WRITESTRING
+
+MOV EDX, OFFSET BYTE2BUFFER
+MOV ECX, SIZEOF BYTE2BUFFER
+CALL READSTRING
+CALL GETPROMPT2NUMBER						;gets number from readstring prompting
+MOV EAX, 0
+MOV AL, PROMPTENTRY
+MOV NEWPRIORITY, AL
+
+changenametraverseend1:
+CALL CHANGE
+CALL SHOW
+jmp endcommand
+CHANGErecordnamenotfound:
+
+
+
+
+
+recorddoesntexist:
+mov edx, offset recorddoesntexist1				;display record name does not exist error
+call writestring
+jmp endcommand
+endcommand:
+MOV STEPCOUNT, 0			
+jmp reenterdata
+done:
+jmp endcommand
+emptybuffer:
+jmp endcommand
+nextchar1:
+jmp endcommand
+endofwordcopy:
+jmp endcommand
+inputerror:
+call crlf
+mov edx, offset thatsnotacommand
+call writestring
+call crlf
+jmp endcommand
+
+LOADCOMMANDPROMPT:							;prompts for all the parameters to load
+MOV EDI, 0
+MOV ESI, 0
+CALL CRLF
+MOV EDX, OFFSET ONLYLOADBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+MOV EDX, OFFSET ASKPRIORITY
+CALL WRITESTRING
+MOV EDX, OFFSET BYTEBUFFER
+mov ecx, sizeof bytebuffer
+CALL READSTRING
+CALL GETPROMPTNUMBER
+MOV EAX, 0
+MOV AL, PROMPTENTRY
+MOV PRIORITY, AL
+MOV BYTEBUFFER, 0
+CALL CRLF
+MOV EDX, OFFSET ASKSTATUS
+CALL WRITESTRING
+MOV EDX, OFFSET BYTEBUFFER
+CALL READSTRING
+MOV ESI, 0
+MOV EAX, 0
+MOV AL, BYTEBUFFER[ESI]
+MOV STATUS, AL
+MOV BYTEBUFFER, 0 
+CALL CRLF
+MOV EDX, OFFSET ASKRUNTIME
+CALL WRITESTRING
+MOV EDX, OFFSET BYTEBUFFER
+mov ecx, sizeof bytebuffer
+MOV EAX, 0
+CALL READSTRING
+CALL GETPROMPTNUMBER
+MOV AL, PROMPTENTRY
+MOV RUNTIME, AL
+CMP SUNDER, 1
+JE LOADTIMEARGH
+MOV SUNCOUNT, 1
+
+JMP LOADTIMEARGH
+mov ebx, endofjobs
+mov jobindex, ebx
+ADD ENDOFJOBS, 14
+CALL CRLF
+call show
+CALL CRLF
+JMP ENDCOMMAND
+
+KILLCOMMANDPROMPT:								;gets parameters for kill, then jump to killcommand
+MOV EDI, 0
+MOV ESI, 0
+CALL CRLF
+MOV EDX, OFFSET ONLYKILLBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+JMP KILLCOMMANDPROMPTENTRY
+
+RUNCOMMANDPROMPT:
+MOV EDI, 0
+MOV ESI, 0							;get parameters for run, then jump to runcommand
+CALL CRLF
+MOV EDX, OFFSET ONLYRUNBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+JMP RUNCOMMANDPROMPTENTRY
+
+HOLDCOMMANDPROMPT:
+MOV EDI, 0
+MOV ESI, 0								;get parameters for hold, jump to hold command
+CALL CRLF
+MOV EDX, OFFSET ONLYHOLDBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+JMP HOLDCOMMANDPROMPTENTRY
+
+STEPCOMMANDPROMPT:
+MOV BUFFER, 0
+MOV EDX, OFFSET ASKRUNTIME
+CALL WRITESTRING
+CALL READDEC									;get parameters for step, jump to step command
+MOV EBX, EAX
+ADD AL, 30h
+MOV ENTRY1, AL
+JMP STEPCOMMANDPROMPTENTRY
+
+CHANGECOMMANDPROMPT:
+theresneither:									;GET BOTH PARAMETERS FOR CHANGE
+MOV EDI, 0
+MOV ESI, 0
+CALL CRLF
+MOV EDX, OFFSET ONLYCHANGEBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+MOV EDX, OFFSET ASKPRIORITY
+CALL WRITESTRING
+MOV EDX, OFFSET BYTEBUFFER
+mov ecx, sizeof bytebuffer
+CALL READSTRING
+CALL GETPROMPTNUMBER
+MOV EAX, 0
+MOV AL, PROMPTENTRY
+MOV NEWPRIORITY, AL
+jmp changecommandpromptentry
+
+theresonlythepriority:						;GOT THE PRIORITY, GET THE NAME
+mov eax, 0
+mov al, buffer[edi]
+mov newpriority, al
+MOV EDI, 0
+MOV ESI, 0
+CALL CRLF
+MOV EDX, OFFSET ONLYCHANGEBYTE
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET ASKNAME
+CALL WRITESTRING
+CALL CRLF
+MOV EDX, OFFSET NAMEBUFFER
+MOV ECX, SIZEOF NAMEBUFFER
+CALL READSTRING
+CALL GETNAMEWORD
+CALL CRLF
+jmp changecommandpromptentry
+
+theresnopriority:					;GOT THE RECORDNAME, GET THE PRIORITY
+add charcount, 1
+call changegetword
+call crlf
+mov edx, offset askpriority
+call writestring
+mov edx, offset bytebuffer
+mov ecx, sizeof bytebuffer
+call readstring
+call getpromptnumber
+mov eax, 0
+mov al, promptentry
+mov newpriority, al
+jmp changecommandpromptentry
+
+quitcommand:
+call crlf										;EXIT PROGRAM
+mov edx, offset quitbyte
+call writestring
+call crlf
+
+exit
+main ENDP
+
+
+;for procedures, we'll get all the data from input buffer in the command loop (operands such as jobname, runtime, etc)
+;and then use those variables in the PROCs to make needed changes to jobs (processing queue)
+
+getcommand PROC							;GET COMMAND FROM INPUT BUFFER
+mov al, 0
+mov esi, 0
+
+getcommand1:
+cmp commandcount, 4
+je getcommandend
+AND BUFFER[EDI], 11011111b
+mov al, 0
+mov al, buffer[edi]
+mov words[esi], al
+inc edi
+inc esi
+inc commandcount
+jmp getcommand1
+
+getcommandend:
+mov commandcount, 0
+ret
+getcommand ENDP
+
+GETNAMEWORD PROC							;GET NAME FOR PARAMETERS PROMPTS
+MOV edi, 0
+mov esi, 0
+mov getawordcharcount, 0
+
+getword1:
+mov al, 0
+mov al, NAMEBUFFER[edi]
+mov records[esi], al
+inc getawordcharcount
+inc edi
+inc esi
+cmp NAMEbuffer[edi], 00
+je getwordend
+cmp NAMEbuffer[edi], 20h
+je getwordend
+jmp getword1
+
+getwordend:
+cmp getawordcharcount, 8
+jl getwordend1
+jmp getwordfinal
+
+getwordend1:
+mov records[esi], 20h
+inc getawordcharcount
+inc esi
+jmp getwordend
+
+getwordfinal:
+ret
+
+GETNAMEWORD ENDP
+
+CHANGEGETWORD PROC								;GET RECORD FOR CHANGE COMMAND
+ADD edi, 7
+mov esi, 0
+mov getawordcharcount, 0
+
+CHANGEgetword1:
+mov al, 0
+mov al, buffer[edi]
+mov records[esi], al
+inc getawordcharcount
+inc edi
+inc esi
+cmp buffer[edi], 20h
+je CHANGEgetwordend
+CMP BUFFER[EDI], 00
+JE CHANGEGETWORDEND
+jmp CHANGEgetword1
+
+CHANGEgetwordend:
+cmp getawordcharcount, 8
+jl CHANGEgetwordend1
+jmp CHANGEgetwordfinal
+
+CHANGEgetwordend1:
+mov records[esi], 20h
+inc getawordcharcount
+inc esi
+jmp CHANGEgetwordend
+
+CHANGEgetwordfinal:
+ret
+CHANGEGETWORD ENDP
+
+getword PROC							;GET RECORDNAME FROM COMMANDLINE
+ADD edi, 5
+mov esi, 0
+mov getawordcharcount, 0
+
+getword1:
+mov al, 0
+mov al, buffer[edi]
+mov records[esi], al
+inc getawordcharcount
+inc edi
+inc esi
+cmp buffer[edi], 00
+je getwordend
+cmp buffer[edi], 20h
+je getwordend
+
+jmp getword1
+
+getwordend:
+cmp getawordcharcount, 8
+jl getwordend1
+jmp getwordfinal
+
+getwordend1:
+mov records[esi], 20h
+inc getawordcharcount
+inc esi
+jmp getwordend
+
+getwordfinal:
+ret
+
+getword ENDP
+
+GETPROMPTNUMBER PROC						;GET NUMBER FROM PROMPTING FOR MISSING PARAMETERS
+MOV PROMPTENTRY, 0
+cmp eAx, 3
+je threenumbers
+cmp eAx, 2
+je twonumbers
+cmp eAx, 1
+je onenumber
+jmp endgetnumber
+
+onenumber:
+mov edi, 0
+mov eax, 0
+mov al, bytebuffer[edi]
+mov entry1, 0
+mov promptentry, al
+MOV SATCOUNT, 1
+jmp endgetnumber
+
+twonumbers:
+mov edi, 0
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, bytebuffer[EDI]				;move next number into first bit of ebx
+sub ebx, '0'					;convert to dec
+mov eax, ebx					;move number into eax register
+mov ebx, 10d					;multiply by 10 to move number from first bit into second bit
+imul ebx						;move number from first bit to second bit
+mov ebx, eax					;mov answer into ebx register
+add PROMPTENTRY, BL					;add number to entry1
+inc edi							;move to next position in buffer
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, BYTEbuffer[EDI]				;move number to first bit of ebx
+sub ebx, '0'					;translate to dec
+ADD PROMPTENTRY, BL
+ADD AL, PROMPTENTRY
+MOV SUNDER, 1
+MOV SATCOUNT, 2
+jmp endgetnumber
+
+
+threenumbers:
+mov edi, 0
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move number indexed by EDI in the input buffer into the first bit of ebx
+sub ebx, '0'					;translate hex number in ebx to dec number
+mov eax, ebx					;move translated dec number into eax for multiplication (multiplying is to move first number at the first bit to the second bit, making room for next number to be in the first bit)
+mov ebx, 100d					;multiplying by 100 will move first bit to the third bit
+imul ebx						;moves first number to front of three digit number.
+mov ebx, eax					;moves answer of multiplication back into ebx register (from eax register)
+mov promptentry, bl					;moves answer into entry1 variable
+inc edi							;move to next number in buffer
+cmp buffer[EDI], '0'			;compares second char of input buffer to see if its a number
+jl thatsnotanumberloop			;if not, jump out
+cmp buffer[EDI], '9'			;compares second char of input buffer to see if its a number
+jg thatsnotanumberloop			;if not, jump out
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move next number into first bit of ebx
+sub ebx, '0'					;convert to dec
+mov eax, ebx					;move number into eax register
+mov ebx, 10d					;multiply by 10 to move number from first bit into second bit
+imul ebx						;move number from first bit to second bit
+mov ebx, eax					;mov answer into ebx register
+add promptentry, bl					;add number to entry1
+inc edi							;move to next position in buffer
+cmp buffer[EDI], '0'			;sees if third char of input buffer is a number
+jl thatsnotanumberloop			;if not, jump out
+cmp buffer[EDI], '9'			;sees if third char of input buffer is a number
+jg thatsnotanumberloop			;if not jump out
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move number to first bit of ebx
+sub ebx, '0'					;translate to dec
+add promptentry, bl					;add to entry1
+jmp endgetnumber				;jump to the end
+
+endgetnumber:
+ret
+thatsnotanumberloop:
+ret
+
+GETPROMPTNUMBER ENDP
+
+GETZNUMBER PROC								;GET A 1 DIGIT PRIORITY
+MOV EAX, 0
+MOV AL, BUFFER[EDI]
+MOV ENTRY1, AL
+RET
+
+GETZNUMBER ENDP
+
+
+getnumber PROC								;GET NUMBER FROM INPUT BUFFER
+
+numberlengthcheck:
+MOV ECX, 0
+MOV ENTRY3, 0
+MOV ECX, CHARCOUNT
+ADD CHARCOUNT, -1
+MOV EDI, CHARCOUNT
+mov edisave, edi
+DEC EDI
+CMP BUFFER[EDI], 20h
+jne checkforthree
+jmp onenumber
+
+checkforthree:
+dec edi
+cmp buffer[edi], 20h
+je twonumbers
+jmp threenumbers
+
+
+onenumber:
+add edi, 1
+mov eax, 0
+mov al, buffer[edi]
+mov entry1, 0
+mov entry1, al
+MOV SATCOUNT, 1
+jmp endgetnumber
+
+twonumbers:
+add edi, 1
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move next number into first bit of ebx
+sub ebx, '0'					;convert to dec
+mov eax, ebx					;move number into eax register
+mov ebx, 10d					;multiply by 10 to move number from first bit into second bit
+imul ebx						;move number from first bit to second bit
+mov ebx, eax					;mov answer into ebx register
+add entry3, EBX					;add number to entry1
+inc edi							;move to next position in buffer
+cmp buffer[EDI], '0'			;sees if third char of input buffer is a number
+jl thatsnotanumberloop			;if not, jump out
+cmp buffer[EDI], '9'			;sees if third char of input buffer is a number
+jg thatsnotanumberloop			;if not jump out
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move number to first bit of ebx
+sub ebx, '0'					;translate to dec
+ADD ENTRY3, EBX
+MOV EAX, ENTRY3
+MOV ENTRY1, AL
+MOV SATCOUNT, 2
+jmp endgetnumber
+ret
+
+threenumbers:
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move number indexed by EDI in the input buffer into the first bit of ebx
+sub ebx, '0'					;translate hex number in ebx to dec number
+mov eax, ebx					;move translated dec number into eax for multiplication (multiplying is to move first number at the first bit to the second bit, making room for next number to be in the first bit)
+mov ebx, 100d					;multiplying by 100 will move first bit to the third bit
+imul ebx						;moves first number to front of three digit number.
+mov ebx, eax					;moves answer of multiplication back into ebx register (from eax register)
+mov entry1, bl					;moves answer into entry1 variable
+inc edi							;move to next number in buffer
+cmp buffer[EDI], '0'			;compares second char of input buffer to see if its a number
+jl thatsnotanumberloop			;if not, jump out
+cmp buffer[EDI], '9'			;compares second char of input buffer to see if its a number
+jg thatsnotanumberloop			;if not, jump out
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move next number into first bit of ebx
+sub ebx, '0'					;convert to dec
+mov eax, ebx					;move number into eax register
+mov ebx, 10d					;multiply by 10 to move number from first bit into second bit
+imul ebx						;move number from first bit to second bit
+mov ebx, eax					;mov answer into ebx register
+add entry1, bl					;add number to entry1
+inc edi							;move to next position in buffer
+cmp buffer[EDI], '0'			;sees if third char of input buffer is a number
+jl thatsnotanumberloop			;if not, jump out
+cmp buffer[EDI], '9'			;sees if third char of input buffer is a number
+jg thatsnotanumberloop			;if not jump out
+mov eax, 0						;reinitialize eax register
+mov ebx, 0						;reinitialize ebx register
+mov bl, buffer[EDI]				;move number to first bit of ebx
+sub ebx, '0'					;translate to dec
+add entry1, bl					;add to entry1
+jmp endgetnumber				;jump to the end
+
+
+
+endgetnumber:
+inc edi
+ret
+thatsnotanumberloop:
+ret
+lastgetnumber:
+mov entry1, 0
+mov al, 0
+mov al, buffer[edi]
+mov entry1, al
+mov edi, edisave
+ret
+
+getnumber ENDP
+
+step PROC						;PROCESS RECORDS, DECREMENT RUNTIME BY 1
+mov edi, 0						;reinitialize edi, esi has been determined
+
+
+step1:
+mov eax, 0
+MOV EDX, 0
+MOV HASBEENCOUNT, 0
+MOV HASBEENOUTPUT, 0
+mov al, locationbuffer[esi]			;LOCATIONBUFFER HAS LOCATION OF WHICH RECORD TO STEP
+mov edi, eax
+MOV ESI, EAX
+MOV HASBEENSAVE, EDI
+MOV EDI, 0							;HASBEEN VARIABLES ARE FOR DISPLAYING WHICH RECORD IS BEING PROCESSED
+ADD ESI, 2
+HASBEEN1:
+MOV DL, JOBS[ESI]
+MOV HASBEENOUTPUT[EDI], DL
+INC EDI
+INC ESI
+INC HASBEENCOUNT
+CMP HASBEENCOUNT, 8
+JE HASBEENDONE
+JMP HASBEEN1
+
+HASBEENDONE:
+MOV EDI, HASBEENSAVE
+cmp starttime1, 0h
+je firststep
+stepper:
+add edi, 11						;move edi to the runtime byte of record to be stepped
+ADD jobs[edi], -1
+CMP JOBS[EDI], 39h					;NEED TO DIFFERENTIATE BETWEEN 1-9 CHARS AND 48-57 NUMBERS
+je enternine
+CMP JOBS[EDI], 38h
+je entereight
+CMP JOBS[EDI], 37h
+je enterseven
+CMP JOBS[EDI], 36h
+je entersix
+CMP JOBS[EDI], 35h
+je enterfive
+CMP JOBS[EDI], 34h
+je enterfour
+CMP JOBS[EDI], 33h
+je enterthree
+CMP JOBS[EDI], 32h
+je entertwo
+CMP JOBS[EDI], 31h
+je enterone
+cmp jobs[edi], 30h
+je enterzero
+JMP AFTERENTER1
+
+enternine:
+mov jobs[edi], 57d
+jmp afterenter2
+entereight:
+mov jobs[edi], 56d
+jmp afterenter2
+enterseven:
+mov jobs[edi], 55d
+jmp afterenter2
+entersix:
+mov jobs[edi], 54d
+jmp afterenter2
+enterfive:
+mov jobs[edi], 53d
+jmp afterenter2
+enterfour:
+mov jobs[edi], 52d
+jmp afterenter2
+enterthree:
+mov jobs[edi], 51d
+jmp afterenter2
+entertwo:
+mov jobs[edi], 50d
+jmp afterenter2
+enterone:
+mov jobs[edi], 49d
+jmp afterenter2
+enterzero:
+mov jobs[edi], 48d
+jmp afterenter2
+
+afterenter1:
+cmp jobs[edi], 0d
+je killjob
+afterenter2:
+inc stepcount							;INC STEPCOUNT TO FINDOUT WHICH NEXT HIGH PRIORITY TO PROCESS, AND WHICH TO SKIP OVER
+MOV ECX, 0								;BECAUSE THEY WERE ALREADY RUN
+MOV CL, NUMBEROFHPRECORDS				;IF THEY ARE EQUAL, BEEN THROUGH A WHOLE CYCLE
+cmp stepcount, CL
+je resetstepcount						;JUMP TO RESET
+jmp stepgetout
+
+killjob:						;KILL JOB ONCE ITS FINISHED
+add edi, -11
+MOV KILLINDEX, 0
+KILLJOB1:
+MOV JOBS[EDI], 0
+MOV JOBS[EDI], 20h
+inc edi
+inc killindex
+cmp killindex, 14
+jne killjob1
+MOV STEPCOUNT, 0
+MOV STEPCOMPARE, 0
+MOV NUMBEROFHPRECORDS, 0
+ADD NUMBEROFJOBS, -14
+CALL CRLF
+MOV EDX, OFFSET COMPLETED
+CALL WRITESTRING
+MOV EDX, OFFSET HASBEENOUTPUT
+CALL WRITESTRING
+MOV EDX, OFFSET ATTIME
+CALL WRITESTRING
+MOV AL, STARTTIME1
+CALL WRITEDEC
+CALL CRLF
+INC STARTTIME1
+RET
+
+resetstepcount:
+mov stepcount, 0
+
+stepgetout:
+add edi, 2
+CMP JOBS[EDI], 'N'
+JNE STEPGETOUT1							;ENTER THE STARTTIME
+mov jobs[edi], 0
+mov eax, 0
+mov al, starttime1
+mov jobs[edi], al
+STEPGETOUT1:
+MOV STEPCOMPARE, 0
+MOV NUMBEROFHPRECORDS, 0
+CALL CRLF
+MOV EDX, OFFSET PROCESSING1
+CALL WRITESTRING						;OUTPUT PROCESSING
+MOV EDX, OFFSET HASBEENOUTPUT
+CALL WRITESTRING
+MOV EDX, OFFSET ATTIME
+CALL WRITESTRING
+MOV AL, STARTTIME1
+CALL WRITEDEC
+CALL CRLF
+INC STARTTIME1
+RET
+
+firststep:
+add edi, 13
+mov jobs[edi], 0						;ON THE FIRST STEP, NEED TO MOVE 0 INTO STARTTIME
+mov jobs[edi], 0d
+add edi, -13
+jmp stepper
+step ENDP
+
+show PROC					;s, p, n
+
+
+SHOWZ:
+CALL CRLF
+MOV EDX, OFFSET BREAKOUTPUT
+CALL WRITESTRING
+CALL CRLF
+mov edi, 0
+mov esi, 0
+mov eCx, 0
+mov ebx, 0
+mov eCx, NUMBEROFJOBS
+
+show1:
+MOV OUTPUTBUFFER, 0
+cmp eCx, 0										;if ecx = 0, no more records to display
+je showend
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl						;move status byte
+inc edi
+inc esi
+mov outputbuffer[esi], 20h
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]								;move priority byte
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov outputbuffer[esi], 20h
+inc esi
+
+show2:
+mov ebx, 0
+mov bl, jobs[edi]								;move first byte of recordname
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl
+inc edi
+inc esi
+mov ebx, 0
+mov bl, jobs[edi]
+mov outputbuffer[esi], bl					;move last byte of record name
+inc esi
+MOV OUTPUTBUFFER[ESI], 20h
+inc esi
+
+show3:
+MOV EAX, 0
+ADD edi, 2									;move to runtime byte
+mov al, jobs[edi]		
+mov entry1, al								;move runtime into entry1
+CMP ENTRY1, 1h
+je displayone
+CMP ENTRY1, 1h								;NEED TO DIFFERENTIATE BETWEEN 1-9 CHARS AND 48-57 DIGITS
+je displayone
+CMP ENTRY1, 2h
+je displayTWO
+CMP ENTRY1, 3h
+je displayTHREE
+CMP ENTRY1, 4h
+je displayFOUR
+CMP ENTRY1, 5h
+je displayFIVE
+CMP ENTRY1, 6h
+je displaySIX
+CMP ENTRY1, 7h
+je displaySEVEN
+CMP ENTRY1, 8h
+je displayEIGHT
+CMP ENTRY1, 9h
+je displayNINE
+CMP ENTRY1, 1Fh
+je display31
+cmp entry1, 20h
+je display32
+CMP ENTRY1, 20h
+je showreset2
+CMP ENTRY1, 1Fh
+je showreset2
+cmp entry1, 9d
+JG multipledigits
+jmp singledigit
+
+displayone:
+mov entry1, '1'						;NEED TO KEEP DIFFERENTIATING
+jmp singledigit
+displayTWO:
+mov entry1, '2'
+jmp singledigit
+displayTHREE:
+mov entry1, '3'
+jmp singledigit
+displayFOUR:
+mov entry1, '4'
+jmp singledigit
+displayFIVE:
+mov entry1, '5'
+jmp singledigit
+displaySIX:
+mov entry1, '6'
+jmp singledigit
+displaySEVEN:
+mov entry1, '7'
+jmp singledigit
+displayEIGHT:
+mov entry1, '8'
+jmp singledigit
+displayNINE:
+mov entry1, '9'
+jmp singledigit
+
+display31:
+mov entry1, 31d							;31h AND 32h CAUSE ISSUES, change them to decimal
+jmp multipledigits
+
+display32:
+mov entry1, 32d
+jmp multipledigits
+
+multipledigits:							;if showing multiple digits
+add edi, 2
+mov eax, 0
+mov al, jobs[edi]
+mov entry5, al
+CMP ENTRY5, 'N'
+JE ALTERNATEmultiple					;move to alternate multiple digits display, because instead of writedec it'll be writestring
+
+mov eax, 0
+call crlf
+mov edx, offset outputbuffer
+call WriteString
+mov AL, entry1
+CBW
+call WritedeC								;output everything to screen
+mov edx, offset spacebyte
+call WriteString
+mov eax, 0
+mov al, entry5
+CBW
+Call WriteDEC
+call crlf
+jmp showreset
+
+
+
+
+singledigit:
+add edi, 2
+mov eax, 0
+mov al, jobs[edi]
+mov entry5, al
+CMP ENTRY5, 'N'
+JE ALTERNATEsingle								;if starttime is 'n', will need to writestring instead of writedec 
+
+mov eax, 0
+call crlf
+mov edx, offset outputbuffer
+call writestring
+mov AL, ENTRY1
+
+call WRITECHAR
+mov edx, offset spacebyte
+call Writestring										;output single number runtime to screen with non-N starttime
+mov al, entry5
+call WriteDEC
+call crlf
+jmp showreset
+
+alternatemultiple:
+mov eax, 0
+call crlf
+mov edx, offset outputbuffer
+call WriteString										;output multiple number runtime with N starttime
+mov AL, entry1
+CBW
+call WritEDEC
+mov edx, offset spacebyte
+call WriteString
+mov eax, 0
+mov edx, offset entry5
+Call WriteString
+call crlf
+jmp showreset
+
+alternatesingle:
+mov eax, 0
+call crlf
+mov edx, offset outputbuffer
+call writestring
+mov AL, ENTRY1								;output single digit runtime with N starttime
+CBW
+call WRITECHAR
+mov edx, offset spacebyte
+call Writestring
+mov edx, offset entry5
+call WriteString
+call crlf
+jmp showreset
+
+showreset2:
+CALL CRLF
+mov edx, offset outputbuffer						;reset everything for next show
+call WriteString
+CALL CRLF
+ADD EDI, 2
+MOV OUTPUTBUFFER, 0
+INC EDI
+MOV ESI, 0
+JMP SHOW1
+
+showreset:
+ADD ECX, -14
+MOV OUTPUTBUFFER, 0								;reset and set counts
+INC EDI
+MOV ESI, 0
+jmp show1
+ 
+showend:
+MOV ESI, 0
+MOV EDI, 0
+CALL CRLF
+MOV EDX, OFFSET BREAKOUTPUT					;break line
+CALL WRITESTRING
+CALL CRLF
+ret
+
+show ENDP
+
+GETPROMPT2NUMBER PROC						;gets priority from prompting for parameters
+MOV EAX, 0
+MOV ESI, 0
+MOV EDI, 0
+MOV AL, BYTE2BUFFER[ESI]
+MOV PROMPTENTRY, AL
+RET
+GETPROMPT2NUMBER ENDP
+
+
+kill PROC								;kills job if its status is HOLD
+cmp edikill, 0
+jE killbeg
+mov killindex, 14
+killA:
+MOV JOBS[EDI], 0
+mov jobs[edi], 20h
+dec killindex
+inc edi
+cmp killindex, 0
+jne killA
+ADD NUMBEROFJOBS, -14
+ret
+
+killbeg:
+mov edi, traverseindex
+mov killindex, 14
+cmp jobs[edi], 'H'
+jne killnoth
+
+kill1:
+MOV JOBS[EDI], 0
+mov jobs[edi], 20h
+dec killindex
+inc edi
+cmp killindex, 0
+jne kill1
+mov traverseindex, 0
+ADD NUMBEROFJOBS, -14
+ret
+killnoth:
+ret
+kill ENDP
+
+hold PROC								;puts jobs status to hold
+mov edi, traverseindex
+mov jobs[edi], 0
+mov jobs[edi], 'H'
+MOV TRAVERSEINDEX, 0
+ret
+hold ENDP
+
+run PROC								;puts job status to run
+mov edi, traverseindex
+mov jobs[edi], 0
+mov jobs[edi], 'R'
+MOV TRAVERSEINDEX, 0
+ret
+run ENDP
+
+load PROC								;loads record to jobs from variables
+cmp numberofjobs, 140
+je loadfullqueueerror
+cmp priority, 37h
+jg priorityerror1
+
+mov esi, 0
+mov edisave, edi
+MOV EDI, 0							;load to space where jobs was killed instead of at endofjobs
+CMP JOBS[EDI], 20h
+je loadstart
+ADD EDI, 14
+CMP JOBS[EDI], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+add edi, 14
+cmp jobs[edi], 20h
+je loadstart
+
+mov edi, NUMBEROFJOBS
+
+loadstart:
+MOV EDILOADSAVE, EDI
+mov al, 0
+mov al, status								;puts status and priority into jobs
+mov jobs[edi], al
+inc edi
+mov al, 0
+mov al, priority
+mov jobs[edi], al
+inc edi
+mov esi, 0
+
+loadbreak:
+mov al, 0
+cmp esi, getawordcharcount
+jge loadbreakend
+mov al, records[esi]						;puts record name into jobs
+mov hasbeenOUTPUT[esi], al					;puts recordname into HASBEEN for output
+mov jobs[edi], al				;mov esi, 0. mov jobs[loadpoint], word[esi]. inc esi, inc loadpoint. mov jobs[loadpoint], word[esi]...so on and so on until cmp getwordcount, loadpointcount
+inc edi
+inc esi
+jmp loadbreak
+
+
+
+loadbreakend:
+mov edi, EDILOADSAVE
+add edi, 10
+mov eax, 0
+MOV jobs[edi], 20h
+inc edi
+mov al, runtime								;puts runtime into jobs
+CBW
+mov jobs[edi], al
+inc edi
+mov jobs[edi], 20h
+inc edi
+mov eax, 0
+mov al, starttime
+mov jobs[edi], al
+MOV EDI, EDISAVE
+ADD NUMBEROFJOBS, 14
+CALL CRLF
+mov edx, offset hasbeenOUTPUT
+call writestring
+mov edx, offset hasbeenLOADED
+call writestring
+ret
+
+priorityerror1:
+mov edx, offset priorityerror
+call writestring
+ret
+loadfullqueueerror:
+mov edx, offset loadfullerror
+call WriteString
+ret
+load ENDP
+
+change PROC								;change job priority
+MOV ESI, TRAVERSEINDEX
+add eSi, 1
+mov al, newpriority
+MOV JOBS[ESI], 0
+mov jobs[eSi], al
+RET
+change ENDP
+
+help PROC						;display help menu
+
+call crlf
+mov edx, offset helpbyte1
+call writestring
+call crlf
+mov edx, offset helpbyte2
+call writestring
+call crlf
+mov edx, offset helpbyte3
+call writestring
+call crlf
+mov edx, offset helpbyte4
+call writestring
+call crlf
+mov edx, offset helpbyte5
+call writestring
+call crlf
+RET
+
+help ENDP
+
+KILLSTEP PROC								;kills stepbuffer record that doesn't begin with R or have the highest priority
+mov killindex, 0
+killstep1:
+MOV STEPBUFFER[ESI], 0
+MOV STEPBUFFER[ESI], 20h
+inc killindex
+inc esi
+cmp killindex, 14
+jne killstep1
+ret
+KILLSTEP ENDP
+
+END main
