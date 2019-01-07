@@ -1,0 +1,68 @@
+/*
+* Course:   CSC400 Operating Systems
+* Program:  Assignment 3 Process Spawning & IPC
+* Names:    Riley Fisher (FIS4554@calu.edu), Levi Whited (WHI4530@calu.edu)
+*
+* Building Instructions:
+*  gcc child2.c -std=c11 -D_SVID_SOURCE -o child2 &&
+*  gcc a3main.c -std=c11 -D_SVID_SOURCE -o a3main
+*  ./a3main
+*
+*/
+
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/times.h>
+#include  <sys/ipc.h>
+#include <sys/wait.h>
+
+#define CLK_TCK sysconf(_SC_CLK_TCK)
+
+extern ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp, int msgflg);
+extern int msgget(key_t __key, int __msgflg); 
+
+struct msg {
+    int number;
+} my_msg;
+
+double IterationFactor(double n) {
+    double fact = 1;
+    for (int i = 1; i <= n; i++) {
+        fact = fact * i;
+    }
+    return fact;
+}
+
+int child_proc_2(double value) {
+    double answer = 0;
+    struct tms running;
+    for (int i = 0; i < 4000000; i++) {
+        answer = IterationFactor(value);
+    }
+    times(&running);
+    printf("[Child2]\tIt took %.3f seconds to iteratively compute %.0f\n", ((float) running.tms_utime / CLK_TCK), answer);
+    if (getppid() == 1) {
+        printf("[Child2]\tI am a zombie!\n");
+    }
+    exit(0);
+}
+
+int main() {
+    int msgqid;
+    key_t MQ_KEY = 12345;
+    printf("[Child2]\tPID%d PPID:%i\n", getpid(), getppid());
+    if ((msgqid = msgget(MQ_KEY, 0)) < 0) {
+        printf("[Child2]\tmsgget failed!\n");
+        exit(1);
+    } else {
+        printf("[Child2]\tMessage Queue Sent, msgqid=%d\n", msgqid);
+    }
+    if (msgrcv(msgqid, &my_msg, sizeof(my_msg.number), 0, 0) < 0) {
+        printf("[Child2]\tmsgrcv failed!\n");
+        exit(1);
+    }
+    child_proc_2(my_msg.number);
+    return 0;
+}
