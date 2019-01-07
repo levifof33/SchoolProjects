@@ -1,0 +1,429 @@
+
+
+//CET 350 Technical Computing Using Java
+//Group Program 7 Chat
+//Group 9 : Juran, John jur3106@calu.edu;             
+//			Whited, Levi  whi4530@calu.edu;   	 
+//			MacDonald, J.R. mac6501@calu.edu;
+//
+
+import java.io.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.net.*;
+
+public class ChatTxt extends Frame implements WindowListener, ActionListener, Runnable
+{
+	private static final long serialVersionUID = 1L;
+	private TextArea chatTextArea;
+	private TextArea statusTextArea;
+	private TextField msgTextField;
+	private TextField hostTextField;
+	private TextField portTextField;
+	private Label hostLabel;
+	private Label portLabel;
+	private Button sendButton;
+	private Button hostButton;
+	private Button portButton;
+	private Button startButton;
+	private Button connectButton;
+	private Button disconnectButton;
+	private Button colorButton;
+	private Frame colorFrame;
+	private CheckboxGroup colors;
+	private Checkbox color1;
+	private Checkbox color2;
+	private Checkbox color3;
+	private Checkbox color4;
+	private Button colorFrameOK;
+
+	private String host = "10.0.0.2";
+	private int port = 44004;
+	private final static boolean autoFlush = true;
+	private Socket mySocket;
+	private ServerSocket listen_socket;
+	private BufferedReader in;
+	private PrintWriter out;
+	private String temp;
+	private int mode = 0; //0=start,1=server,2=client
+	private boolean runFlag = true;
+
+public static void main(String[] args)
+{
+	new ChatTxt("Chat Application");
+}
+
+private ChatTxt(String title)
+{
+	addWindowListener(this);
+	setTitle(title);
+	setSize(640,480);
+	setVisible(true);
+
+GridBagLayout chatView = new GridBagLayout();
+chatView.rowHeights = new int[]{1,1,1,1,1,1,1,1,1,1,1,1};
+chatView.columnWidths = new int[]{1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+chatView.rowWeights = new double[]{1,1,1,1,1,1,1,1,1,1,1,1};
+chatView.columnWeights = new double[]{1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+
+setLayout(chatView);
+
+GridBagConstraints c = new GridBagConstraints();
+c.fill = GridBagConstraints.BOTH;
+
+chatTextArea = new TextArea(" ",10,80,TextArea.SCROLLBARS_VERTICAL_ONLY);
+chatTextArea.setEditable(false);
+c.gridx = 0;
+c.gridy = 0;
+c.gridwidth = 14;
+c.gridheight = 6;
+chatView.setConstraints(chatTextArea, c);
+add(chatTextArea);
+
+msgTextField = new TextField();
+msgTextField.addActionListener(this);
+msgTextField.setEnabled(false);
+c.gridx = 0;
+c.gridy = 6;
+c.gridwidth = 12;
+c.gridheight = 1;
+chatView.setConstraints(msgTextField, c);
+add(msgTextField);
+
+sendButton = new Button("Send");
+sendButton.addActionListener(this);
+sendButton.setEnabled(false);
+c.gridx = 12;
+c.gridy = 6;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(sendButton, c);
+add(sendButton);
+
+hostLabel = new Label("Host:");
+c.gridx = 1;
+c.gridy = 7;
+c.gridwidth = 1;
+c.gridheight = 1;
+chatView.setConstraints(hostLabel, c);
+add(hostLabel);
+
+hostTextField = new TextField(host);
+hostTextField.addActionListener(this);
+c.gridx = 2;
+c.gridy = 7;
+c.gridwidth = 7;
+c.gridheight = 1;
+chatView.setConstraints(hostTextField, c);
+add(hostTextField);
+
+hostButton = new Button("Change Host");
+hostButton.addActionListener(this);
+c.gridx = 10;
+c.gridy = 7;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(hostButton, c);
+add(hostButton);
+
+startButton = new Button("Start Server");
+startButton.addActionListener(this);
+c.gridx = 12;
+c.gridy = 7;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(startButton, c);
+add(startButton);
+
+portLabel = new Label("Port:");
+c.gridx = 1;
+c.gridy = 8;
+c.gridwidth = 1;
+c.gridheight = 1;
+chatView.setConstraints(portLabel, c);
+add(portLabel);
+
+portTextField = new TextField(Integer.toString(port));
+portTextField.addActionListener(this);
+c.gridx = 2;
+c.gridy = 8;
+c.gridwidth = 7;
+c.gridheight = 1;
+chatView.setConstraints(portTextField, c);
+add(portTextField);
+
+portButton = new Button("Change Port");
+portButton.addActionListener(this);
+c.gridx = 10;
+c.gridy = 8;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(portButton, c);
+add(portButton);
+
+connectButton = new Button("Connect");
+connectButton.addActionListener(this);
+c.gridx = 12;
+c.gridy = 8;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(connectButton, c);
+add(connectButton);
+
+colorButton = new Button("Change Color");
+colorButton.addActionListener(this);
+c.gridx = 10;
+c.gridy = 9;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(colorButton, c);
+add(colorButton);
+
+disconnectButton = new Button("Disconnect");
+disconnectButton.addActionListener(this);
+disconnectButton.setEnabled(false);
+c.gridx = 12;
+c.gridy = 9;
+c.gridwidth = 2;
+c.gridheight = 1;
+chatView.setConstraints(disconnectButton, c);
+add(disconnectButton);
+
+statusTextArea = new TextArea(" ",3,80,TextArea.SCROLLBARS_VERTICAL_ONLY);
+statusTextArea.setEditable(false);
+c.gridx = 0;
+c.gridy = 10;
+c.gridwidth = 14;
+c.gridheight = 2;
+chatView.setConstraints(statusTextArea, c);
+add(statusTextArea);
+
+pack();
+
+//create colorFrame with CheckboxGroup and OK button
+colorFrame = new Frame("Text Color");
+colorFrame.setSize(100,150);
+colors = new CheckboxGroup();
+
+colorFrame.setLayout(new GridLayout(4,0));
+
+color1 = new Checkbox("Black",colors,true);
+colorFrame.add(color1);
+
+color2 = new Checkbox("Blue",colors,false);
+colorFrame.add(color2);
+
+color3 = new Checkbox("Red",colors,false);
+colorFrame.add(color3);
+
+color4 = new Checkbox("Gray",colors,false);
+colorFrame.add(color4);
+
+colorFrameOK = new Button("OK");
+colorFrame.add(colorFrameOK);
+
+new Thread(this).start();
+}
+
+
+public void windowClosing(WindowEvent e)
+{
+	Object it = e.getSource();
+	if(it == this)
+	{
+		//dispose frames, remove all listeners and quit
+		this.dispose();
+		hideColorFrame();
+		colorFrame.dispose();
+		msgTextField.removeActionListener(this);
+		sendButton.removeActionListener(this);
+		hostButton.removeActionListener(this);
+		startButton.removeActionListener(this);
+		portTextField.removeActionListener(this);
+		portButton.removeActionListener(this);
+		connectButton.removeActionListener(this);
+		disconnectButton.removeActionListener(this);
+		colorButton.removeActionListener(this);
+		System.exit(0);
+	}
+	else if(it == colorFrame)
+	hideColorFrame();
+}
+
+public void windowClosed(WindowEvent e){}
+public void windowOpened(WindowEvent e){}
+public void windowIconified(WindowEvent e){}
+public void windowDeiconified(WindowEvent e){}
+public void windowActivated(WindowEvent e){}
+public void windowDeactivated(WindowEvent e){}
+
+public void actionPerformed(ActionEvent e)
+{
+	Object it = e.getSource();
+	//show colorFrame
+	if(it == colorButton)
+	showColorFrame();
+	//hide colorFrame and update chatTextArea color
+	else if(it == colorFrameOK)
+	{
+		hideColorFrame();
+		//get selected color
+		Checkbox selected = colors.getSelectedCheckbox();
+		//change font color of chatTextArea to selected color
+		if(selected == color1)
+		chatTextArea.setForeground(Color.BLACK);
+		else if(selected == color2)
+		chatTextArea.setForeground(Color.BLUE);
+		else if(selected == color3)
+		chatTextArea.setForeground(Color.RED);
+		else if(selected == color4)
+		chatTextArea.setForeground(Color.GRAY);
+	}
+	//responds to enter from msgTextField or click on sendButton if there is a msg
+	else if((it == sendButton || it == msgTextField) && !msgTextField.getText().equals(""))
+	{
+		chatTextArea.append("\n" + "YOU: " + msgTextField.getText());
+		//send msg
+		out.println(msgTextField.getText());
+		//clear msgTextField
+		msgTextField.setText("");
+	}
+	//responds to click on hostButton or enter from hostTextField
+	else if(it == hostButton || it == hostTextField)
+	{
+		host = hostTextField.getText();
+		statusTextArea.append("\n" + "Host changed to " + host);
+		if(mode == 2)
+		statusTextArea.append("\n" + "Restart to apply changes");
+	}
+	else if(it == portButton || it == portTextField)
+	{
+		port = Integer.parseInt(portTextField.getText());
+		statusTextArea.append("\n" + "Port changed to " + port);
+		if(mode != 0)
+		statusTextArea.append("\n" + "Restart to apply changes");
+	}
+	else if(it == startButton)
+	{
+		statusTextArea.append("\n" + "Listening for client on port " + port);
+
+		try
+		{
+			if (listen_socket != null)
+			{
+				listen_socket.close();
+				listen_socket = null;
+			}
+			listen_socket = new ServerSocket(port);
+			listen_socket.setSoTimeout(10000);
+			mySocket = listen_socket.accept();
+			in = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+			out = new PrintWriter(mySocket.getOutputStream(),autoFlush);
+		}
+		catch (IOException e1){}
+		finally
+		{
+			statusTextArea.append("\n" + "Client " + mySocket.getInetAddress() + " accepted");
+			mode = 1;
+			connectButton.setEnabled(false);
+			sendButton.setEnabled(true);
+			msgTextField.setEnabled(true);
+			disconnectButton.setEnabled(true);
+		};
+	}
+	else if(it == connectButton)
+	{
+		statusTextArea.append("\n" + "Trying to connect to " + host + " on port " + port);
+
+		try
+		{
+			if (mySocket !=null)
+			{
+				mySocket.close();
+				mySocket = null;
+			}
+			mySocket = new Socket(host,port);
+			in = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+			out = new PrintWriter(mySocket.getOutputStream(),autoFlush);
+			mode = 2;
+		}
+		catch (IOException e1)
+		{
+			statusTextArea.append("\n" + "Server not found");
+			mode = 0;
+		}
+		finally
+		{
+			if (mode != 0)
+			{
+				statusTextArea.append("\n" + "Connection successful");
+				startButton.setEnabled(false);
+				sendButton.setEnabled(true);
+				msgTextField.setEnabled(true);
+				disconnectButton.setEnabled(true);
+			}
+		};
+	}
+	else if(it == disconnectButton)
+	{
+		startButton.setEnabled(true);
+		connectButton.setEnabled(true);
+		sendButton.setEnabled(false);
+		msgTextField.setEnabled(false);
+		disconnectButton.setEnabled(false);
+		in = null;
+		out = null;
+		try
+		{
+			mySocket.close();
+			listen_socket.close();
+		}
+		catch(IOException | NullPointerException e1){};
+		mode = 0;
+		statusTextArea.append("\n" + "Disconnected");
+	}
+}
+
+public void run()
+{
+while(runFlag)
+{
+	if(in != null)
+	{
+		try
+		{
+			while((temp = in.readLine()) != null && runFlag)
+			{
+				chatTextArea.append("\n" + "NOT YOU: " + temp);
+			}
+		//mySocket was closed on the other end : calls actionPerformed on disconnectButton
+		actionPerformed(new ActionEvent(disconnectButton,0,""));
+		}
+	catch (IOException e){};
+	}
+//check for message every 500ms. this will reduce cpu resources used
+	try
+	{
+		Thread.sleep(500);
+	}catch (InterruptedException ex){}
+}
+}
+
+public void showColorFrame()
+{
+	colorFrame.setLocation(getX(),getY()); //appears at top right of the main frame
+	colorFrame.setVisible(true);
+	colorFrame.addWindowListener(this);
+	colorFrameOK.addActionListener(this);
+}
+
+public void hideColorFrame()
+{
+	colorFrame.setVisible(false);
+	colorFrame.removeWindowListener(this);
+	colorFrameOK.removeActionListener(this);
+}
+
+}
+
+
